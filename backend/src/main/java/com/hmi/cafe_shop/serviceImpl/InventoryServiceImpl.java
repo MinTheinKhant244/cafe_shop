@@ -1,0 +1,31 @@
+package com.hmi.cafe_shop.serviceImpl;
+
+import com.hmi.cafe_shop.entity.Inventory;
+import com.hmi.cafe_shop.repository.InventoryRepository;
+import com.hmi.cafe_shop.service.InventoryService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class InventoryServiceImpl implements InventoryService {
+
+    private final InventoryRepository inventoryRepository;
+
+    @Override
+    public List<Inventory> getAllInventoryStatus() {
+        return inventoryRepository.findAll();
+    }
+
+    @Override
+    public Optional<Inventory> getInventoryByProductId(Long productId) {
+        return inventoryRepository.findByProductId(productId);
+    }
+
+    @Override
+    public List<Inventory> getLowStockProducts() {
+        return inventoryRepository.findLowStockProducts();
+    }
+}

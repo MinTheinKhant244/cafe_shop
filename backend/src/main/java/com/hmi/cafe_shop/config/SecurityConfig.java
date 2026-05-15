@@ -1,0 +1,64 @@
+package com.hmi.cafe_shop.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+import com.hmi.cafe_shop.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
+
+@Configuration
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .cors(cors -> {}) // Cross-Origin ခွင့်ပြုရန်
+            .csrf(csrf -> csrf.disable()) // Stateless JWT သုံးမှာမို့လို့ CSRF ကို disable လုပ်ရန်
+            .authorizeHttpRequests(auth -> auth
+                
+                // PUBLIC ENDPOINTS
+                .requestMatchers("/api/auth/**").permitAll() 
+                .requestMatchers("/uploads/**").permitAll() 
+                
+                // ADMIN and MANAGER 
+                // ကုန်ပစ္စည်း သက်တမ်းကုန်လို့ ပယ်ဖျက်ခြင်း (Write-off) နှင့် Expire စာရင်းစစ်ခြင်း
+                .requestMatchers("/api/stock-logs/write-off/**").hasAnyRole("ADMIN", "MANAGER")
+                .requestMatchers("/api/stock-logs/expiring-soon").hasAnyRole("ADMIN", "MANAGER")
+                
+                //  Manager and Admin
+                .requestMatchers("/api/inventory/**").hasAnyRole("ADMIN", "MANAGER")
+                
+                // (ADMIN, MANAGER, CASHIER)
+                // Products & Categories
+                .requestMatchers("/api/products/all", "/api/products/category/**").authenticated()
+                .requestMatchers("/api/categories/**").authenticated()
+                
+                // Tables
+                .requestMatchers("/api/tables/all", "/api/tables/id/**").authenticated()
+                
+                // Stock Logs & Suppliers
+                .requestMatchers("/api/stock-logs/all", "/api/stock-logs/product/**").authenticated()
+                .requestMatchers("/api/suppliers/**").authenticated()
+                
+                // Orders & Order Items
+                .requestMatchers("/api/orders/**").authenticated()
+                .requestMatchers("/api/order-items/**").authenticated()
+                .requestMatchers("/api/payments/**").authenticated()
+                
+                // USER MANAGEMENT
+                .requestMatchers("/api/users/create").permitAll()
+                .requestMatchers("/api/users/email/**").authenticated()
+                .requestMatchers("/api/users/**").hasRole("ADMIN")
+                
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(jwtAuthenticationFilter, 
+                             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+}
