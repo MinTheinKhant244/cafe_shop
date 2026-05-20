@@ -342,3 +342,18 @@ java.io.FileNotFoundException:
 	at org.eclipse.ui.internal.decorators.DecorationScheduler$1.ensureResultCached(DecorationScheduler.java:386)
 	at org.eclipse.ui.internal.decorators.DecorationScheduler$1.run(DecorationScheduler.java:362)
 	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
+
+!ENTRY org.springframework.tooling.ls.eclipse.commons 1 0 2026-05-15 11:52:26.864
+!MESSAGE ClasspathListenerHandler removeClasspathListener sts4.classpath.rSxYWEME
+
+!ENTRY org.springframework.tooling.ls.eclipse.commons 1 0 2026-05-15 11:52:26.867
+!MESSAGE unsubscribing from classpath changes: sts4.classpath.rSxYWEME
+
+!ENTRY org.springframework.tooling.ls.eclipse.commons 1 0 2026-05-15 11:52:26.867
+!MESSAGE subsribers = {}
+
+!ENTRY org.springframework.tooling.ls.eclipse.commons 1 0 2026-05-15 11:52:26.868
+!MESSAGE ClasspathListenerHandler removeClasspathListener sts4.classpath.rSxYWEME => OK
+
+!ENTRY org.eclipse.ui 2 2 2026-05-15 11:52:27.443
+!MESSAGE Invalid property category path: org.springframework.ide.eclipse.beans.ui.properties.ProjectPropertyPage (bundle: org.springframework.ide.eclipse.xml.namespaces, propertyPage: org.springframework.ide.eclipse.beans.ui.namespaces.projectPropertyPage)
