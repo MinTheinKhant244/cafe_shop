@@ -1,0 +1,52 @@
+package com.hmi.cafe_shop.controller;
+
+import java.time.LocalDate;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import com.hmi.cafe_shop.service.ReportService;
+
+@RestController
+@RequestMapping("/api/reports")
+@CrossOrigin(origins = "*")
+public class ReportController {
+
+    private final ReportService reportService;
+
+    public ReportController(ReportService reportService) {
+        this.reportService = reportService;
+    }
+
+    // DAILY REPORT
+    @GetMapping("/daily")
+    public ResponseEntity<Map<String, Object>> getDailyReport(
+            @RequestParam String date) {
+
+        LocalDate parsedDate = LocalDate.parse(date);
+
+        return ResponseEntity.ok(
+                reportService.getDailyReport(parsedDate)
+        );
+    }
+
+    // MONTHLY REPORT
+    @GetMapping("/monthly")
+    public ResponseEntity<Map<String, Object>> getMonthlyReport(
+            @RequestParam int year,
+            @RequestParam int month) {
+
+        return ResponseEntity.ok(
+                reportService.getMonthlyReport(year, month)
+        );
+    }
+
+    // DASHBOARD SUMMARY
+    @GetMapping("/dashboard")
+    public ResponseEntity<Map<String, Object>> getDashboard() {
+        return ResponseEntity.ok(
+                reportService.getDashboardSummary()
+        );
+    }
+}

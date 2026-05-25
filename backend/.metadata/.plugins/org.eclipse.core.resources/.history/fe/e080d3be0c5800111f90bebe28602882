@@ -1,0 +1,25 @@
+package com.hmi.cafe_shop.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDate;
+
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "reports")
+public class Report {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private LocalDate reportDate;
+    private Double totalSales;
+    private Integer totalOrders;
+    private Double totalProfit;
+
+}

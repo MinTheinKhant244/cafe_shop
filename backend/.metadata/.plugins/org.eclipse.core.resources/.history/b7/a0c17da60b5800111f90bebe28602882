@@ -1,0 +1,5 @@
+package com.hmi.cafe_shop.repository;
+
+public interface s {
+
+}

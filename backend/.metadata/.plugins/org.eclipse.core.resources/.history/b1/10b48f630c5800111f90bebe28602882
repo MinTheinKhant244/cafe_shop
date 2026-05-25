@@ -1,0 +1,9 @@
+package com.hmi.cafe_shop.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.hmi.cafe_shop.entity.Report;
+
+public interface ReportRepository extends JpaRepository<Report, Long> {
+	
+}

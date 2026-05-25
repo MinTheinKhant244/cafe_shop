@@ -1,0 +1,13 @@
+package com.hmi.cafe_shop.service;
+
+import java.time.LocalDate;
+import java.util.Map;
+
+public interface ReportService {
+
+    Map<String, Object> getDailyReport(LocalDate date);
+
+    Map<String, Object> getMonthlyReport(int year, int month);
+
+    Map<String, Object> getDashboardSummary();
+}

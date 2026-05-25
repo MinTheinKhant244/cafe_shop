@@ -1,0 +1,62 @@
+package com.hmi.cafe_shop.service.impl;
+
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+
+import com.hmi.cafe_shop.repository.OrderRepository;
+import com.hmi.cafe_shop.service.ReportService;
+
+@Service
+public class ReportServiceImpl implements ReportService {
+
+    private final OrderRepository orderRepository;
+
+    public ReportServiceImpl(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+
+    @Override
+    public Map<String, Object> getDailyReport(LocalDate date) {
+
+        Double totalSales = orderRepository.getTotalSalesByDate(date);
+        Long totalOrders = orderRepository.countOrdersByDate(date);
+
+        Map<String, Object> report = new HashMap<>();
+        report.put("date", date);
+        report.put("totalSales", totalSales != null ? totalSales : 0);
+        report.put("totalOrders", totalOrders);
+
+        return report;
+    }
+
+    @Override
+    public Map<String, Object> getMonthlyReport(int year, int month) {
+
+        Double totalSales = orderRepository.getTotalSalesByMonth(year, month);
+        Long totalOrders = orderRepository.countOrdersByMonth(year, month);
+
+        Map<String, Object> report = new HashMap<>();
+        report.put("year", year);
+        report.put("month", month);
+        report.put("totalSales", totalSales != null ? totalSales : 0);
+        report.put("totalOrders", totalOrders);
+
+        return report;
+    }
+
+    @Override
+    public Map<String, Object> getDashboardSummary() {
+
+        Map<String, Object> summary = new HashMap<>();
+
+        summary.put("todaySales", orderRepository.getTodaySales());
+        summary.put("monthlySales", orderRepository.getMonthlySales());
+        summary.put("totalOrders", orderRepository.countAllOrders());
+        summary.put("pendingOrders", orderRepository.countPendingOrders());
+
+        return summary;
+    }
+}
