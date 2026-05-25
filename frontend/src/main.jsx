@@ -6,22 +6,19 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 // import { DataTable } from 'simple-datatables'
 // import './assets/css/styles.css'
-import { BrowserRouter } from 'react-router'
+import { BrowserRouter } from 'react-router-dom'
 import { Provider } from 'react-redux'
 import store from './app/store.js'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     
-    {/* <BrowserRouter>
 
       <Provider store={store}>
-          <App />
+        <BrowserRouter>
+         <App />
+        </BrowserRouter>
       </Provider>
-    
-    </BrowserRouter> */}
-
-    <App></App>
-   
+       
   </React.StrictMode>,
 )
