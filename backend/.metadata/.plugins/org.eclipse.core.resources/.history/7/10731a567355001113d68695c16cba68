@@ -1,0 +1,60 @@
+package com.hmi.cafe_shop.serviceImpl;
+
+import com.hmi.cafe_shop.entity.Supplier;
+import com.hmi.cafe_shop.entity.User;
+import com.hmi.cafe_shop.repository.SupplierRepository;
+import com.hmi.cafe_shop.service.SupplierService;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class SupplierServiceImpl implements SupplierService {
+
+    @Autowired
+    private SupplierRepository supplierRepository;
+
+    @Override
+    public Supplier createSupplier(Supplier supplier) {
+        return supplierRepository.save(supplier);
+    }
+
+    @Override
+    public Optional<Supplier> getSupplierById(Long id) {
+        return supplierRepository.findById(id);
+    }
+
+    @Override
+    public List<Supplier> getAllSuppliers() {
+        return supplierRepository.findAll();
+    }
+
+    @Override
+    public List<Supplier> getActiveSuppliers() {
+        return supplierRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public Supplier updateSupplier(Supplier supplier, Long id) {
+        return supplierRepository.findById(id).map(existingSupplier -> {
+            existingSupplier.setName(supplier.getName());
+            existingSupplier.setPhone(supplier.getPhone());
+            existingSupplier.setEmail(supplier.getEmail());
+            existingSupplier.setAddress(supplier.getAddress());
+            existingSupplier.setIsActive(supplier.getIsActive());
+            return supplierRepository.save(existingSupplier);
+        }).orElseThrow(() -> new RuntimeException("Supplier not found with id: " + id));
+    }
+
+    @Override
+    public void deleteSupplier(Long id) {
+    	Supplier supplier = supplierRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+    	supplier.setIsActive(false);   // ✅ soft delete
+        supplierRepository.save(supplier);
+    }
+}
