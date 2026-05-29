@@ -1,0 +1,33 @@
+package com.hmi.cafe_shop.service;
+
+import com.hmi.cafe_shop.entity.Category;
+import com.hmi.cafe_shop.entity.Product;
+import com.hmi.cafe_shop.entity.Supplier;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.web.multipart.MultipartFile;
+
+public interface ProductService {
+    Product createProduct(Product product);
+    Optional<Product> getProductById(Long id);
+    List<Product> getAllProducts();
+    List<Product> getActiveProducts();
+    List<Product> getProductsByCategory(Long categoryId);
+ 
+
+        Product updateProduct(
+                Long id,
+                String name,
+                Double price,
+                String description,
+                Long categoryId,
+                boolean isActive,
+                MultipartFile imageFile
+        ) throws IOException;
+    
+    void deactivateProduct(Long id);
+    void activateProduct(Long id);
+}

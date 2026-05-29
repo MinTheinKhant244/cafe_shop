@@ -1,0 +1,100 @@
+package com.hmi.cafe_shop.serviceImpl;
+
+import com.hmi.cafe_shop.entity.Category;
+import com.hmi.cafe_shop.entity.Inventory;
+import com.hmi.cafe_shop.entity.Product;
+import com.hmi.cafe_shop.entity.Supplier;
+import com.hmi.cafe_shop.repository.InventoryRepository;
+import com.hmi.cafe_shop.repository.ProductRepository;
+import com.hmi.cafe_shop.service.ProductService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class ProductServiceImpl implements ProductService {
+
+    @Autowired
+    private ProductRepository productRepository;
+    @Autowired
+    private InventoryRepository inventoryRepository;
+    @Autowired
+    private CategoryRepository categoryRepository;
+    
+    @Override
+    public Product createProduct(Product product) {
+        Product savedProduct = productRepository.save(product);
+     // 2. Auto create Inventory
+        Inventory inventory = new Inventory();
+        inventory.setProduct(savedProduct);
+        inventory.setQuantity(0);
+        inventory.setLowStockThreshold(5);
+
+        inventoryRepository.save(inventory);
+
+        return savedProduct;
+    }
+
+    @Override
+    public Optional<Product> getProductById(Long id) {
+        return productRepository.findById(id);
+    }
+
+    @Override
+    public List<Product> getAllProducts() {
+        return productRepository.findAll();
+    }
+
+    @Override
+    public List<Product> getProductsByCategory(Long categoryId) {
+        return productRepository.findByCategoryId(categoryId);
+    }
+
+    @Override
+    public Product updateProduct(Product product, Long id) {
+        Product existing = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        existing.setName(product.getName());
+        existing.setPrice(product.getPrice());
+        existing.setDescription(product.getDescription());
+        existing.setImage(product.getImage());
+        existing.setIsActive(product.getIsActive());
+
+        // 🔥 FIX CATEGORY HERE
+        if (product.getCategory() != null) {
+            Long categoryId = product.getCategory().getId();
+
+            Category category = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
+
+            existing.setCategory(category);
+        }
+
+        return productRepository.save(existing);
+    }
+
+    @Override
+    public void deactivateProduct(Long id) {
+    	Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+    	product.setIsActive(false);   // ✅ soft delete
+        productRepository.save(product);
+    }
+
+	@Override
+	public List<Product> getActiveProducts() {
+		return productRepository.findByIsActiveTrue();
+	}
+
+	@Override
+	public void activateProduct(Long id) {
+		Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+    	product.setIsActive(true); 
+        productRepository.save(product);		
+	}
+}
