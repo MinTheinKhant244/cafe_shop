@@ -1,0 +1,225 @@
+.dashboardLayout {
+  display: flex;
+  padding-left: 70px; /* Sidebar Width သလောက် ဖယ်ပေးခြင်း */
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Middle Section */
+.mainContent {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background-color: var(--bg-main);
+}
+
+.topHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--bg-dark-header);
+  padding: 12px 20px;
+  border-radius: 4px;
+  color: #fff;
+  margin-bottom: 20px;
+}
+
+.searchBar {
+  background: #2d3542;
+  padding: 6px 12px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.searchBar input {
+  background: none;
+  border: none;
+  color: #fff;
+  outline: none;
+}
+
+.headerInfo {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+/* Category Tabs */
+.tabContainer {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.tabBtn {
+  background-color: #fff;
+  border: 1px solid #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+.tabActive {
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+/* Products Grid */
+.productsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 15px;
+}
+.productCard {
+  background-color: var(--bg-card);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.productCard:hover {
+  transform: translateY(-2px);
+}
+.productCard img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+}
+.cardDetail {
+  padding: 10px;
+  text-align: center;
+}
+.cardDetail h4 {
+  margin: 0 0 5px 0;
+  font-size: 0.95rem;
+  color: var(--text-dark);
+}
+.cardDetail p {
+  margin: 0;
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #1a1a1a;
+  background: #edf2f7;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+/* Right Side Cart Section */
+.cartSection {
+  width: 380px;
+  background-color: var(--bg-cart);
+  border-left: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.cartHeader {
+  padding: 20px;
+  background-color: var(--bg-dark-header);
+  color: white;
+}
+.cartHeader h3 { margin: 0; font-size: 1.1rem; }
+
+.addCustomer {
+  padding: 12px;
+  text-align: center;
+  background-color: #f1f5f9;
+  margin: 15px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.cartItemsList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 15px;
+}
+
+.cartItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.itemMeta h5 { margin: 0 0 2px 0; font-size: 0.95rem; }
+.itemMeta span { font-size: 0.8rem; color: #3182ce; }
+
+.qtyControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.qtyControl button {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.itemPrice {
+  font-weight: 600;
+  font-size: 0.95rem;
+  width: 70px;
+  text-align: right;
+}
+
+.deleteBtn {
+  background: none;
+  border: none;
+  color: var(--color-danger);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* Cart Bottom Summary */
+.cartSummary {
+  padding: 20px;
+  background-color: #fff;
+  border-top: 1px solid #e2e8f0;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  margin-bottom: 15px;
+  font-size: 0.95rem;
+}
+
+.payButton {
+  width: 100%;
+  background-color: #3182ce; /* Default fallback blue */
+  background: linear-gradient(135deg, #4299e1, #3182ce);
+  color: white;
+  border: none;
+  padding: 15px;
+  border-radius: 6px;
+  font-size: 1.4rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+/* 💡 Pay Button အား Enjoy Cafe theme ဝါ/ရွှေရောင် သို့ ပြောင်းလဲခြင်း */
+.payButton {
+  background: var(--enjoy-primary);
+  color: #000000;
+}
+.payButton:hover {
+  background: var(--enjoy-primary-hover);
+}

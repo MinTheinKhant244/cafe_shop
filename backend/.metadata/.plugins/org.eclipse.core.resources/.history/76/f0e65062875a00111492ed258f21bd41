@@ -1,0 +1,91 @@
+package com.hmi.cafe_shop.serviceImpl;
+
+import java.util.List;
+import java.util.Optional;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.hmi.cafe_shop.security.JwtUtil;
+import com.hmi.cafe_shop.service.UserService;
+import com.hmi.cafe_shop.entity.User;
+import com.hmi.cafe_shop.repository.UserRepository;
+
+@Service
+public class UserServiceImpl implements UserService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;    
+    
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @Override
+    public User createUser(User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        return userRepository.save(user);
+    }
+
+    @Override
+    public Optional<User> getUserById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    @Override
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    @Override
+    @Transactional // Database Update စိတ်ချရစေရန်
+    public User updateUser(User user, Long id) {
+        // .get() အစား စနစ်တကျ Exception ထုတ်ရန် ပြင်ထားပါသည်
+        User oldUser = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        
+        oldUser.setName(user.getName());
+        oldUser.setRole(user.getRole());
+        oldUser.setIsActive(user.getIsActive());
+        
+        if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
+            oldUser.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
+        return userRepository.save(oldUser);
+    }
+
+    @Override
+    public void deactivateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setIsActive(false);   // ✅ soft delete
+        userRepository.save(user);
+    }
+
+    @Override
+    public String login(String email, String password) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new RuntimeException("Invalid password");
+        }
+
+        if (!user.getIsActive()) {
+            throw new RuntimeException("User is inactive");
+        }
+
+        return JwtUtil.generateToken(user.getEmail(), user.getRole());
+    }
+
+    @Override
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    @Override
+    public List<User> getActiveUsers() {
+        return userRepository.findByIsActiveTrue();
+    }
+}

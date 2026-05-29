@@ -1,0 +1,29 @@
+package com.hmi.cafe_shop.controller;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@PostMapping("/login")
+public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+
+    String token = userService.login(request.getEmail(), request.getPassword());
+
+    if (token != null && !token.isEmpty()) {
+        // 💡 Token ရော User Role ပါ ပါဝင်မည့် JSON Object တစ်ခု ဆောက်ခြင်း
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        
+        // သင့် UserService ကနေ email အလိုက် User Role ကို ဆွဲထုတ်ပေးရပါမယ်
+        String role = userService.getRoleByEmail(request.getEmail()); // 👈 ဒီလို method မျိုး သုံးရန်
+        
+        Map<String, String> userMap = new HashMap<>();
+        userMap.put("email", request.getEmail());
+        userMap.put("role", role); // ဥပမာ - "ADMIN" သို့မဟုတ် "CASHIER"
+        
+        response.put("user", userMap);
+
+        return ResponseEntity.ok(response); // JSON အဖြစ် ပြန်ပို့ပေးမည်
+    } else {
+        return ResponseEntity.badRequest().body("Invalid email or password");
+    }
+}

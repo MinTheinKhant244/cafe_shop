@@ -1,0 +1,37 @@
+/* login.module.css ထဲမှာ အောက်ပါအတိုင်း ရှိနေကြောင်း သေချာပါစေ */
+
+.loginContainer {
+  background-image: url('https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=1000');
+  background-size: cover;
+  background-position: center;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.overlay {
+  backdrop-filter: blur(4px);
+  pointer-events: none; /* အနောက်က layer က ခလုတ်တွေကို လာမဖုံးစေရန် အရေးကြီးသည် */
+}
+
+.passwordInput:focus {
+  box-shadow: none;
+  outline: 2px solid #f3a807;
+}
+
+/* Bootstrap Switch အတွက် Custom Style */
+.customSwitch {
+  width: 2.2rem !important;
+  height: 1.1rem !important;
+  background-color: #555555 !important;
+  border-color: #555555 !important;
+  cursor: pointer;
+}
+
+.customSwitch:checked {
+  background-color: #f3a807 !important;
+  border-color: #f3a807 !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='%23fff' d='M9.307 14.948a1.5 1.5 0 1 1-2.31-1.906l3.1-3.757a1.5 1.5 0 1 1 2.31 1.906l-3.1 3.757z'/%3e%3c/svg%3e") !important;
+}
+
+.customSwitch:focus {
+  box-shadow: none !important;
+}

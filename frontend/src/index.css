@@ -1,0 +1,20 @@
+:root {
+  --enjoy-primary: #f3a807;
+  --enjoy-primary-hover: #d49205;
+  --bg-dark-header: #1e2229;
+  --bg-dark-active: #2a2f3b;
+  --bg-main: #f5f7fb;
+  --bg-card: #ffffff;
+  --bg-cart: #ffffff;
+  --bg-cart-item: #f8fafc;
+  --text-dark: #2d3748;
+  --text-light: #ffffff;
+  --text-muted: #718096;
+  --color-danger: #e53e3e;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-main);
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}

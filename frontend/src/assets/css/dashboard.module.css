@@ -1,0 +1,159 @@
+/* Layout စနစ် */
+.dashboardLayout {
+  display: flex;
+  padding-left: 70px; /* Sidebar မူလအကျဉ်း width */
+  height: 100vh;
+  background-color: var(--bg-main);
+  transition: padding-left 0.3s ease; /* Slide သွားစေရန် */
+}
+
+/* 💡 Toggle နှိပ်၍ ချဲ့လိုက်သည့်အခါ Content ကြီး ညာဘက်သို့ လိုက်ရွေ့သွားစေရန် */
+.dashboardLayout.sidebarExpanded {
+  padding-left: 240px; 
+}
+
+.mainContent {
+  flex: 1;
+  padding: 25px;
+  overflow-y: auto;
+}
+
+/* Header ပိုင်း */
+.topHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.toggleBtn {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+.toggleBtn:hover { background: #f8fafc; }
+.pageTitle { margin: 0; font-size: 1.5rem; color: var(--text-dark); }
+
+.headerInfo {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+/* Analytics Cards (ထိပ်ပိုင်းကတ်ပြား ၃ ခု) */
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+.analyticCard {
+  background: #fff;
+  padding: 22px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+.cardInfo h3 { font-size: 0.9rem; color: var(--text-muted); margin: 0 0 5px 0; }
+.cardInfo p { font-size: 1.6rem; font-weight: bold; margin: 0 0 5px 0; color: var(--text-dark); }
+.trendUp { font-size: 0.8rem; color: #38a169; font-weight: 500; }
+.trendNormal { font-size: 0.8rem; color: #a0aec0; }
+
+.cardIcon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.4rem;
+}
+.iconSales { background: #feebc8; color: #dd6b20; }
+.iconOrders { background: #ebf8ff; color: #3182ce; }
+.iconStaffs { background: #e6fffa; color: #319795; }
+
+/* Lower Layout (ဇယားနှင့် လူကြိုက်အများဆုံး ပစ္စည်းကဏ္ဍ) */
+.dashboardGridLower {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 992px) {
+  .dashboardGridLower { grid-template-columns: 1fr; }
+}
+
+.tableContainer, .popularSection {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.tableHeaderSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.viewAllBtn {
+  background: none;
+  border: 1px solid var(--enjoy-primary);
+  color: var(--enjoy-primary);
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.viewAllBtn:hover { background: rgba(243, 168, 7, 0.05); }
+
+/* Table Elements */
+.adminTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.adminTable th, .adminTable td {
+  padding: 12px;
+  border-bottom: 1px solid #edf2f7;
+  font-size: 0.9rem;
+}
+.adminTable th { color: var(--text-muted); font-weight: 600; }
+.orderId { font-weight: 600; color: #2b6cb0; }
+.orderTotal { font-weight: 600; }
+
+/* Badges */
+.statusBadge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.statusCompleted { background: #c6f6d5; color: #22543d; }
+.statusPending { background: #feebc8; color: #744210; }
+
+/* Popular List Right Side */
+.popularList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 15px;
+}
+.popularItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  background: #f7fafc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}

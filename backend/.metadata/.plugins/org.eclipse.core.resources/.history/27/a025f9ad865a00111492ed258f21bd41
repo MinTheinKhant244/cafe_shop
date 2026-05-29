@@ -1,0 +1,55 @@
+package com.hmi.cafe_shop.controller;
+
+// 💡 Import များကို Class ရဲ့ အပြင်ဘက်၊ အပေါ်ဆုံးသို့ ရွှေ့လိုက်ပါသည်
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+// Entity အားလုံးကို ယူသုံးနိုင်ရန် .* ဖြည့်စွက်ထားပါသည် (သို့မဟုတ် LoginRequest ကို တိုက်ရိုက် import လုပ်နိုင်သည်)
+import com.hmi.cafe_shop.entity.*; 
+import com.hmi.cafe_shop.service.UserService;
+
+@RestController
+@RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")
+public class AuthController {
+
+    private final UserService userService;
+
+    // Constructor Injection
+    public AuthController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+
+        // 1. Service မှတစ်ဆင့် Login ဝင်ပြီး Token တောင်းခြင်း
+        String token = userService.login(request.getEmail(), request.getPassword());
+
+        if (token != null && !token.isEmpty()) {
+            // 2. 💡 Token ရော User ရော ပါဝင်မည့် တုံ့ပြန်မှု (Map Object) တစ်ခု ဆောက်ခြင်း
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
+            
+            // 3. သင့် UserService ထဲတွင် email အသုံးပြု၍ Role ရှာမည့် Method ကို လှမ်းခေါ်ခြင်း
+            // ⚠️ မှတ်ချက် - သင့် UserService ထဲမှာ getRoleByEmail(String email) ဆိုတဲ့ method ရှိနေရပါမယ်။
+            String role = userService.getRoleByEmail(request.getEmail()); 
+            
+            // 4. Frontend (React) ဘက်က မျှော်လင့်ထားတဲ့ user JSON Structure ပုံစံမျိုး တည်ဆောက်ခြင်း
+            Map<String, String> userMap = new HashMap<>();
+            userMap.put("email", request.getEmail());
+            userMap.put("role", role); // ရလဒ်ထွက်လာမည့်ပုံစံ ဥပမာ - "ADMIN" သို့မဟုတ် "CASHIER"
+            
+            response.put("user", userMap);
+
+            // 5. အားလုံးအောင်မြင်ပါက Status 200 JSON ဖြင့် ပြန်ပို့ပေးမည်
+            return ResponseEntity.ok(response); 
+        } else {
+            // Login မအောင်မြင်ပါက Status 400 ပြန်ပို့မည်
+            return ResponseEntity.badRequest().body("Invalid email or password");
+        }
+    }
+}

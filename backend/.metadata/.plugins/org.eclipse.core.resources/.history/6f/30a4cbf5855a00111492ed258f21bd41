@@ -1,0 +1,16 @@
+// AuthResponse.java
+package com.hmi.cafe_shop.entity;
+
+public class AuthResponse {
+    private String token;
+    private UserResponse user; // သင့် Entity ထဲက User သို့မဟုတ် Role ပါဝင်သော class
+
+    public AuthResponse(String token, UserResponse user) {
+        this.token = token;
+        this.user = user;
+    }
+
+    // Getters and Setters ...
+    public String getToken() { return token; }
+    public User Burger() { return user; }
+}

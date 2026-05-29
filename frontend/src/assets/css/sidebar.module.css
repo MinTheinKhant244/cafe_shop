@@ -1,0 +1,87 @@
+.sidebar {
+  width: 70px;
+  height: 100vh;
+  background-color: var(--bg-dark-header);
+  display: flex;
+  flex-direction: column;
+  padding-top: 20px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  transition: width 0.3s ease; /* 💡 ချဲ့လိုက်ရင် ချောချောမွေ့မွေ့ဖြစ်စေရန် */
+}
+
+/* 💡 ချဲ့လိုက်သည့်အခါ Sidebar width အား တိုးမြှင့်ခြင်း */
+.sidebar.expanded {
+  width: 240px;
+  align-items: flex-start;
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.sidebarBrand {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 35px;
+  padding-left: 10px;
+}
+.brandName {
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.sidebarMenu {
+  list-style: none;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebarMenu li {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.sidebarMenu li a, .sidebarMenu li button {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  color: var(--text-muted);
+  text-decoration: none;
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  padding-left: 15px; /* Icon နေရာအချိုးကျစေရန် */
+}
+
+/* 💡 စာသားများ အိုင်ကွန်နောက်က လိုက်လာစေရန် */
+.menuText {
+  margin-left: 15px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap; /* စာကြောင်းမဆင်းသွားစေရန် */
+}
+
+/* Active State */
+.sidebarMenu li.active a {
+  color: #ffffff;
+  background-color: var(--bg-dark-active);
+  border-left: 4px solid var(--enjoy-primary);
+}
+
+.sidebarMenu li a:hover, .sidebarMenu li button:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.logoutBtn {
+  margin-top: auto;
+  margin-bottom: 20px;
+  width: 100%;
+}

@@ -1,0 +1,48 @@
+package com.hmi.cafe_shop.controller;
+
+// 💡 Import များကို Class ရဲ့ အပြင်ဘက်၊ အပေါ်ဆုံးသို့ ရွှေ့လိုက်ပါသည်
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+// Entity အားလုံးကို ယူသုံးနိုင်ရန် .* ဖြည့်စွက်ထားပါသည် (သို့မဟုတ် LoginRequest ကို တိုက်ရိုက် import လုပ်နိုင်သည်)
+import com.hmi.cafe_shop.entity.*; 
+import com.hmi.cafe_shop.service.UserService;
+
+@RestController
+@RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")
+public class AuthController {
+
+    private final UserService userService;
+
+    // Constructor Injection
+    public AuthController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+
+        String token = userService.login(request.getEmail(), request.getPassword());
+
+        if (token != null && !token.isEmpty()) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
+            
+            String role = userService.getRoleByEmail(request.getEmail()); 
+            
+            Map<String, String> userMap = new HashMap<>();
+            userMap.put("email", request.getEmail());
+            userMap.put("role", role);
+            
+            response.put("user", userMap);
+
+            return ResponseEntity.ok(response); 
+        } else {
+            return ResponseEntity.badRequest().body("Invalid email or password");
+        }
+    }
+}
