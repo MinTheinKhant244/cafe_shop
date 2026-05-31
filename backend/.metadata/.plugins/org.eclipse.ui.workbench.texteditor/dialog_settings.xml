@@ -8,6 +8,7 @@
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
 		<list key="findhistory">
+			<item value="authresponse"/>
 			<item value="cats"/>
 			<item value="cat"/>
 			<item value="category"/>
