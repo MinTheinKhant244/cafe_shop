@@ -5,9 +5,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  // store ကို import လုပ်စရာမလိုတော့ပါ၊ localStorage မှ တိုက်ရိုက်ယူပါ
   const token = localStorage.getItem('token'); 
-  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
