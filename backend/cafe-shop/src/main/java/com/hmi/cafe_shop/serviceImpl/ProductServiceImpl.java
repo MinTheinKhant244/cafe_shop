@@ -1,0 +1,64 @@
+package com.hmi.cafe_shop.serviceImpl;
+
+import com.hmi.cafe_shop.entity.Product;
+import com.hmi.cafe_shop.entity.Supplier;
+import com.hmi.cafe_shop.repository.ProductRepository;
+import com.hmi.cafe_shop.service.ProductService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class ProductServiceImpl implements ProductService {
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Override
+    public Product createProduct(Product product) {
+        return productRepository.save(product);
+    }
+
+    @Override
+    public Optional<Product> getProductById(Long id) {
+        return productRepository.findById(id);
+    }
+
+    @Override
+    public List<Product> getAllProducts() {
+        return productRepository.findAll();
+    }
+
+    @Override
+    public List<Product> getProductsByCategory(Long categoryId) {
+        return productRepository.findByCategoryId(categoryId);
+    }
+
+    @Override
+    public Product updateProduct(Product product, Long id) {
+        return productRepository.findById(id).map(existing -> {
+            existing.setName(product.getName());
+            existing.setPrice(product.getPrice());
+            existing.setImage(product.getImage());
+            existing.setDescription(product.getDescription());
+            existing.setIsActive(product.getIsActive());
+            existing.setCategory(product.getCategory());
+            return productRepository.save(existing);
+        }).orElseThrow(() -> new RuntimeException("Product not found"));
+    }
+
+    @Override
+    public void deleteProduct(Long id) {
+    	Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+    	product.setIsActive(false);   // ✅ soft delete
+        productRepository.save(product);
+    }
+
+	@Override
+	public List<Product> getActiveProducts() {
+		return productRepository.findByIsActiveTrue();
+	}
+}

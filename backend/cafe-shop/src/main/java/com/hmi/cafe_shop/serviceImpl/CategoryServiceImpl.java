@@ -1,0 +1,56 @@
+package com.hmi.cafe_shop.serviceImpl;
+
+import com.hmi.cafe_shop.entity.Category;
+import com.hmi.cafe_shop.entity.User;
+import com.hmi.cafe_shop.repository.CategoryRepository;
+import com.hmi.cafe_shop.service.CategoryService;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class CategoryServiceImpl implements CategoryService {
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Override
+    public Category createCategory(Category category) {
+        return categoryRepository.save(category);
+    }
+
+    @Override
+    public Optional<Category> getCategoryById(Long id) {
+        return categoryRepository.findById(id);
+    }
+
+    @Override
+    public List<Category> getAllCategories() {
+        return categoryRepository.findAll();
+    }
+
+    @Override
+    public List<Category> getActiveCategories() {
+        return categoryRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public Category updateCategory(Category category, Long id) {
+        return categoryRepository.findById(id).map(existing -> {
+            existing.setName(category.getName());
+            existing.setIsActive(category.getIsActive());
+            return categoryRepository.save(existing);
+        }).orElseThrow(() -> new RuntimeException("Category not found"));
+    }
+
+    @Override
+    public void deleteCategory(Long id) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        category.setIsActive(false);   // ✅ soft delete
+        categoryRepository.save(category);
+    }
+}

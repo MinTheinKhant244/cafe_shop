@@ -1,0 +1,34 @@
+package com.hmi.cafe_shop.entity;
+
+import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "shop_tables")
+public class TableEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "table_no", unique = true)
+    private String tableNo;
+
+    private String status;
+    
+    @OneToMany(mappedBy = "table")
+    @JsonIgnore
+    private List<Order> orders;
+    
+    @PrePersist
+	protected void onCreate() {
+		this.status = "AVAILABLE";
+	}
+    
+}
