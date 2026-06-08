@@ -22,7 +22,6 @@ public class FileConfig {
             uploadFolder.mkdirs();
         }
 
-        // ၂။ ပုံနာမည် တူနေရင် ထပ်မသွားအောင် UUID ခံပြီး နာမည်အသစ်ပေးခြင်း (ဥပမာ- abc-123-coffee.jpg)
         String originalFileName = file.getOriginalFilename();
         String uniqueFileName = UUID.randomUUID().toString() + "_" + originalFileName;
 

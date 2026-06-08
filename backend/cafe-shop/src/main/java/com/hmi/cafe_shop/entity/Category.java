@@ -25,6 +25,8 @@ public class Category {
     @Column(name = "is_active")
     private Boolean isActive;
     
+    private String description;
+    
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     @JsonIgnore
     private List<Product> products;

@@ -11,36 +11,35 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class CategoryController {
 
-    private final CategoryService categoryService; 
+    private final CategoryService categoryService;
 
-
-    public CategoryController(CategoryService categoryService) {
-        this.categoryService = categoryService;
-    }
-
-    @PostMapping("/create")
-    public ResponseEntity<Category> create(@RequestBody Category category) {
-        return ResponseEntity.ok(categoryService.createCategory(category));
-    }
+    public CategoryController(CategoryService categoryService) { this.categoryService = categoryService; }
 
     @GetMapping("/all")
-    public ResponseEntity<List<Category>> getAll() {
-        return ResponseEntity.ok(categoryService.getAllCategories());
-    }
+    public ResponseEntity<List<Category>> getAll() { return ResponseEntity.ok(categoryService.getAllCategories()); }
 
-    @GetMapping("/active")
-    public ResponseEntity<List<Category>> getActive() {
-        return ResponseEntity.ok(categoryService.getActiveCategories());
-    }
+    @PostMapping("/create")
+    public ResponseEntity<Category> create(@RequestBody Category category) { return ResponseEntity.ok(categoryService.createCategory(category)); }
 
     @PutMapping("/update/{id}")
     public ResponseEntity<Category> update(@RequestBody Category category, @PathVariable Long id) {
         return ResponseEntity.ok(categoryService.updateCategory(category, id));
     }
+    
+    @GetMapping("/active")
+    public ResponseEntity<List<Category>> getActiveCategories() {
+        return ResponseEntity.ok(categoryService.getActiveCategories());
+    }
 
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
-        categoryService.deleteCategory(id);
-        return ResponseEntity.ok("Category Blocked!");
+    @PutMapping("/activate/{id}")
+    public ResponseEntity<Void> activate(@PathVariable Long id) {
+        categoryService.activateCategory(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/deactivate/{id}")
+    public ResponseEntity<Void> deactivate(@PathVariable Long id) {
+        categoryService.deactivateCategory(id);
+        return ResponseEntity.ok().build();
     }
 }

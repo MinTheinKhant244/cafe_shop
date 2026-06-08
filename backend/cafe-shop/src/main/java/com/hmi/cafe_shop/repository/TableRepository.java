@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface TableRepository extends JpaRepository<TableEntity, Long> {
     List<TableEntity> findByStatus(String status);
+    boolean existsByTableNo(String tableNo);
 }

@@ -38,7 +38,7 @@ function MenuItem() {
     description: "",
     categoryId: "",
     isActive: "true",
-    imagePath: "",
+    image: "",
     imageFile: null,
   });
 
@@ -132,7 +132,7 @@ function MenuItem() {
                 description: "",
                 categoryId: "",
                 isActive: "true",
-                imagePath: "",
+                image: "",
                 imageFile: null,
               });
 
@@ -166,7 +166,7 @@ function MenuItem() {
                   <tr key={item.id}>
                     <td>
                       <img
-                        src={`http://localhost:8080/uploads/${item.imagePath}`}
+                        src={`http://localhost:8080/uploads/${item.image}`}
                         alt={item.name}
                         style={{
                           width: "50px",
@@ -216,8 +216,8 @@ function MenuItem() {
                               ? "true"
                               : "false",
 
-                            imagePath:
-                              item.imagePath || "",
+                            image:
+                              item.image || "",
 
                             imageFile: null,
                           });
@@ -327,7 +327,7 @@ function MenuItem() {
 
                   {/* Current Image */}
                   {isEditing &&
-                    formData.imagePath && (
+                    formData.image && (
                       <div className="mb-2">
                         <small className="text-muted">
                           Current Image:
@@ -336,7 +336,7 @@ function MenuItem() {
                         <br />
 
                         <img
-                          src={`http://localhost:8080/uploads/${formData.imagePath}`}
+                          src={`http://localhost:8080/uploads/${formData.image}`}
                           alt="Current"
                           style={{
                             width: "80px",

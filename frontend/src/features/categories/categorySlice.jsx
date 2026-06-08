@@ -41,7 +41,15 @@ export const deactivateCategory = createAsyncThunk("categories/deactivate", asyn
   }
 });
 
-// 5. Activate
+export const fetchActiveCategories = createAsyncThunk("categories/fetchActive", async (_, thunkAPI) => {
+  try {
+    const response = await api.get("/categories/active");
+    return response.data;
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch active categories");
+  }
+});
+
 export const activateCategory = createAsyncThunk("categories/activate", async (id, thunkAPI) => {
   try {
     // သင့် Backend တွင် /activate/{id} ရှိသည်ဟု ယူဆပါသည်

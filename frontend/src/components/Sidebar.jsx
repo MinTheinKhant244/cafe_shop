@@ -20,6 +20,7 @@ function Sidebar() {
     { name: "Dashboard", path: "/admin/dashboard", icon: "fa-chart-line", roles: ["ADMIN"] },
     { name: "Menu Items", path: "/admin/menu-items", icon: "fa-bowl-food", roles: ["ADMIN"] },
     { name: "Categories", path: "/admin/categories", icon: "fa-tags", roles: ["ADMIN"] },
+    { name: "Tables", path: "/admin/tables", icon: "fa-table", roles: ["ADMIN"] },
     { name: "Orders List", path: "/orders", icon: "fa-receipt", roles: ["ADMIN", "CASHIER"] },
     { name: "Staffs Control", path: "/admin/staffs", icon: "fa-users", roles: ["ADMIN"] }
   ];

@@ -16,6 +16,9 @@ public class TableServiceImpl implements TableService {
 
     @Override
     public TableEntity createTable(TableEntity table) {
+    	if (tableRepository.existsByTableNo(table.getTableNo())) {
+            throw new RuntimeException("Table number " + table.getTableNo() + " already exists!");
+        }
         return tableRepository.save(table);
     }
 

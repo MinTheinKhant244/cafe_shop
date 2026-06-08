@@ -10,54 +10,25 @@ import com.hmi.cafe_shop.service.UserService;
 @RequestMapping("/api/users")
 @CrossOrigin(origins = "*")
 public class UserController {
-	
-	private final UserService userService;
+    
+    private final UserService userService;
+    public UserController(UserService userService) { this.userService = userService; }
 
-	public UserController(UserService userService) {
-		this.userService = userService;
-	}
-	
-	@PostMapping("/create")
-	public ResponseEntity<User> createUser(@RequestBody User user) {
-		User newUser = userService.createUser(user);
-		return ResponseEntity.ok(newUser);
-	}
-	
-	@GetMapping("/all")
-	public ResponseEntity<List<User>> getAllUsers() {
-		List<User> users = userService.getAllUsers();
-		return ResponseEntity.ok(users);
-	}
-	
-	@GetMapping("/id/{id}")
-	public ResponseEntity<User> getUserById(@PathVariable Long id) {
-		return userService.getUserById(id)
-				.map(ResponseEntity::ok)
-				.orElse(ResponseEntity.notFound().build());
-	}
-	
-	@PutMapping("/update/{id}")
-	public ResponseEntity<User> updateUser(@RequestBody User user, @PathVariable Long id) {
-		User updatedUser = userService.updateUser(user, id);
-		return ResponseEntity.ok(updatedUser);
-	}
-	
-	@GetMapping("/active")
-    public ResponseEntity<List<User>> getActiveUsers() {
-        List<User> activeUsers = userService.getActiveUsers();
-        return ResponseEntity.ok(activeUsers);
-    }
-	
-	@GetMapping("/email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email){
-      return userService.getUserByEmail(email)
-          .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
-    }
-	
-	@DeleteMapping("/delete/{id}")
-	public ResponseEntity<String> deleteUser(@PathVariable Long id) {
-		userService.deleteUser(id);
-		return ResponseEntity.ok("Blocked Successfully");
-	}
+    @PostMapping("/create")
+    public ResponseEntity<User> createUser(@RequestBody User user) { return ResponseEntity.ok(userService.createUser(user)); }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<User> updateUser(@RequestBody User user, @PathVariable Long id) { return ResponseEntity.ok(userService.updateUser(user, id)); }
+
+    @PutMapping("/activate/{id}")
+    public ResponseEntity<User> activateUser(@PathVariable Long id) { return ResponseEntity.ok(userService.activateUser(id)); }
+
+    @PutMapping("/deactivate/{id}")
+    public ResponseEntity<User> deactivateUser(@PathVariable Long id) { return ResponseEntity.ok(userService.deactivateUser(id)); }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<User>> getAllUsers() { return ResponseEntity.ok(userService.getAllUsers()); }
+
+    @GetMapping("/active")
+    public ResponseEntity<List<User>> getActiveUsers() { return ResponseEntity.ok(userService.getActiveUsers()); }
 }

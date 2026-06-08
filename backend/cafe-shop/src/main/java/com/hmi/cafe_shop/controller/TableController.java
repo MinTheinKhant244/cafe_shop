@@ -2,6 +2,7 @@ package com.hmi.cafe_shop.controller;
 
 import com.hmi.cafe_shop.entity.TableEntity;
 import com.hmi.cafe_shop.service.TableService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -17,9 +18,14 @@ public class TableController {
         this.tableService = tableService;
     }
 
+ // TableController.java
     @PostMapping("/create")
-    public ResponseEntity<TableEntity> create(@RequestBody TableEntity table) {
-        return ResponseEntity.ok(tableService.createTable(table));
+    public ResponseEntity<?> create(@RequestBody TableEntity table) {
+        try {
+            return ResponseEntity.ok(tableService.createTable(table));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
     }
 
     @GetMapping("/all")

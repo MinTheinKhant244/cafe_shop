@@ -1,64 +1,78 @@
 package com.hmi.cafe_shop.serviceImpl;
 
 import com.hmi.cafe_shop.entity.Product;
-import com.hmi.cafe_shop.entity.Supplier;
 import com.hmi.cafe_shop.repository.ProductRepository;
 import com.hmi.cafe_shop.service.ProductService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
-import java.util.Optional;
+import com.hmi.cafe_shop.config.FileConfig;
+import com.hmi.cafe_shop.entity.Category;
+import com.hmi.cafe_shop.repository.CategoryRepository;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 
 @Service
 public class ProductServiceImpl implements ProductService {
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
 
-    @Override
-    public Product createProduct(Product product) {
-        return productRepository.save(product);
+    public ProductServiceImpl(ProductRepository productRepository, CategoryRepository categoryRepository) {
+        this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     @Override
-    public Optional<Product> getProductById(Long id) {
-        return productRepository.findById(id);
+    public Product createProduct(String name, Double price, String desc, Long catId, boolean active, MultipartFile file) throws IOException {
+        String fileName = FileConfig.saveFile(file);
+
+        Category cat = categoryRepository.findById(catId)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        Product p = new Product();
+        p.setName(name);
+        p.setPrice(price);
+        p.setDescription(desc);
+        p.setCategory(cat);
+        p.setIsActive(active);
+        p.setImage(fileName);
+        
+        return productRepository.save(p);
     }
 
     @Override
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public Product updateProduct(Long id, String name, Double price, String desc, Long catId, boolean active, MultipartFile file) throws IOException {
+        Product p = productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
+        
+        p.setName(name);
+        p.setPrice(price);
+        p.setDescription(desc);
+        p.setCategory(categoryRepository.findById(catId).orElseThrow());
+        p.setIsActive(active);
+
+        // ဖိုင်အသစ်တင်မှသာ ပုံကို အစားထိုးခြင်း
+        if (file != null && !file.isEmpty()) {
+            String fileName = FileConfig.saveFile(file);
+            p.setImage(fileName);
+        }
+
+        return productRepository.save(p);
+    }
+
+    
+    @Override
+    public List<Product> getAllProducts() { 
+        return productRepository.findAll(); 
     }
 
     @Override
-    public List<Product> getProductsByCategory(Long categoryId) {
-        return productRepository.findByCategoryId(categoryId);
+    public List<Product> getActiveProducts() { 
+        return productRepository.findByIsActiveTrue(); 
     }
-
     @Override
-    public Product updateProduct(Product product, Long id) {
-        return productRepository.findById(id).map(existing -> {
-            existing.setName(product.getName());
-            existing.setPrice(product.getPrice());
-            existing.setImage(product.getImage());
-            existing.setDescription(product.getDescription());
-            existing.setIsActive(product.getIsActive());
-            existing.setCategory(product.getCategory());
-            return productRepository.save(existing);
-        }).orElseThrow(() -> new RuntimeException("Product not found"));
+    public void toggleStatus(Long id, boolean status) {
+        Product p = productRepository.findById(id).orElseThrow();
+        p.setIsActive(status);
+        productRepository.save(p);
     }
-
-    @Override
-    public void deleteProduct(Long id) {
-    	Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-
-    	product.setIsActive(false);   // ✅ soft delete
-        productRepository.save(product);
-    }
-
-	@Override
-	public List<Product> getActiveProducts() {
-		return productRepository.findByIsActiveTrue();
-	}
 }

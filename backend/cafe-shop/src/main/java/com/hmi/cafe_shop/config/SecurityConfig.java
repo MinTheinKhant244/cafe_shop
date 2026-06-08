@@ -21,18 +21,18 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 
                 // PUBLIC ENDPOINTS
+                .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll() 
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/categories/all", "/api/categories/active").permitAll()
                 .requestMatchers("/api/products/all", "/api/products/active", "/api/products/category/**").permitAll()
                 
                 // ADMIN 
-                // ကုန်ပစ္စည်း သက်တမ်းကုန်လို့ ပယ်ဖျက်ခြင်း (Write-off) နှင့် Expire စာရင်းစစ်ခြင်း
-                .requestMatchers("/api/stock-logs/write-off/**").hasAnyRole("ADMIN")
-                .requestMatchers("/api/stock-logs/expiring-soon").hasAnyRole("ADMIN")
+//                .requestMatchers("/api/stock-logs/write-off/**").hasAnyRole("ADMIN")
+//                .requestMatchers("/api/stock-logs/expiring-soon").hasAnyRole("ADMIN")
                 
                 //  Admin
-                .requestMatchers("/api/inventory/**").hasAnyRole("ADMIN")
+//                .requestMatchers("/api/inventory/**").hasAnyRole("ADMIN")
                 .requestMatchers("/api/products/**").hasAnyRole("ADMIN")
                 
                 // Tables
@@ -40,18 +40,19 @@ public class SecurityConfig {
                 
                 // Stock Logs & Suppliers
                 .requestMatchers("/api/stock-logs/all", "/api/stock-logs/product/**").authenticated()
-                .requestMatchers("/api/suppliers/**").authenticated()
                 
                 // Orders & Order Items
-                .requestMatchers("/api/categories/**").authenticated()
                 .requestMatchers("/api/orders/**").authenticated()
                 .requestMatchers("/api/order-items/**").authenticated()
                 .requestMatchers("/api/payments/**").authenticated()
                 
                 // USER MANAGEMENT
-                .requestMatchers("/api/users/create").permitAll()
                 .requestMatchers("/api/users/email/**").authenticated()
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
+                .requestMatchers("/api/cateogries/**").hasRole("ADMIN")
+                .requestMatchers("/api/products/**").hasRole("ADMIN")
+                .requestMatchers("/api/suppliers/**").hasRole("ADMIN")
+                
                 
                 .anyRequest().authenticated()
             )

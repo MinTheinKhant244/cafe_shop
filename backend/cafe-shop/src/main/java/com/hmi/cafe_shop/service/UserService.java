@@ -5,12 +5,13 @@ import java.util.Optional;
 import com.hmi.cafe_shop.entity.User;
 
 public interface UserService {
-	User createUser(User user);
-	Optional<User> getUserById(Long id);
-	List<User> getAllUsers();
+    User createUser(User user);
+    User updateUser(User user, Long id);
+    Optional<User> getUserById(Long id);
+    List<User> getAllUsers();
     List<User> getActiveUsers();
-	User updateUser(User user, Long id);
-	void deleteUser(Long id);
-	String login(String email, String password);
-	Optional<User> getUserByEmail(String email);
+    User activateUser(Long id);
+    User deactivateUser(Long id);
+    Optional<User> getUserByEmail(String email);
+    String login(String email, String password);
 }

@@ -7,6 +7,7 @@ import Category from "../pages/admin/Category.jsx"
 import User from "../pages/admin/User.jsx"
 import CashierHome from "../pages/cashier/CashierHome.jsx"
 import Order from "../pages/Order.jsx"
+import Table from "../pages/admin/table.jsx"
 import ProtectedRoute from "../components/ProtectedRoute"
 
 function AppRouter() {
@@ -49,6 +50,15 @@ function AppRouter() {
         element={
           <ProtectedRoute role="ADMIN">
             <User />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/admin/tables" 
+        element={
+          <ProtectedRoute role="ADMIN">
+            <Table />
           </ProtectedRoute>
         } 
       />

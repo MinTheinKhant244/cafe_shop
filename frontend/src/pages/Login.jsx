@@ -17,7 +17,7 @@ function Login() {
   // Form States
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && userRole) {
@@ -90,7 +90,7 @@ function Login() {
             <label htmlFor="password" className="text-white form-label small mb-1">Password</label>
             <div className="input-group">
               <input
-                // type={showPassword ? "text" : "password"}
+                type={showPassword ? "text" : "password"}
                 id="password"
                 className={`form-control rounded-1 border-0 py-2 text-dark ${styles.passwordInput}`}
                 value={password}
