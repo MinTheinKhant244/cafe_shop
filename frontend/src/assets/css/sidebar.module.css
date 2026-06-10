@@ -1,87 +1,474 @@
+/* Sidebar Container */
 .sidebar {
   width: 70px;
   height: 100vh;
-  background-color: var(--bg-dark-header);
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
   display: flex;
   flex-direction: column;
-  padding-top: 20px;
   position: fixed;
   left: 0;
   top: 0;
-  z-index: 100;
-  transition: width 0.3s ease; /* 💡 ချဲ့လိုက်ရင် ချောချောမွေ့မွေ့ဖြစ်စေရန် */
+  bottom: 0;
+  z-index: 1000;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
-/* 💡 ချဲ့လိုက်သည့်အခါ Sidebar width အား တိုးမြှင့်ခြင်း */
+/* Expanded Sidebar */
 .sidebar.expanded {
-  width: 240px;
-  align-items: flex-start;
-  padding-left: 15px;
-  padding-right: 15px;
+  width: 260px;
 }
 
+/* Mobile Sidebar */
+.sidebar.mobile {
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile Overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Brand Section */
 .sidebarBrand {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 35px;
-  padding-left: 10px;
-}
-.brandName {
-  color: white;
-  font-weight: bold;
-  font-size: 1.2rem;
+  gap: 12px;
+  padding: 20px 16px;
+  margin-bottom: 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.logoWrapper {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(243, 168, 7, 0.15);
+  border-radius: 12px;
+}
+
+.brandInfo {
+  flex: 1;
+}
+
+.brandName {
+  display: block;
+  color: white;
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 0.5px;
+}
+
+.brandSubtitle {
+  display: block;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.7rem;
+  margin-top: 2px;
+}
+
+/* Sidebar Menu */
 .sidebarMenu {
   list-style: none;
-  width: 100%;
   padding: 0;
   margin: 0;
+  flex: 1;
 }
 
 .sidebarMenu li {
-  width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 
-.sidebarMenu li a, .sidebarMenu li button {
+.sidebarMenu li a {
   display: flex;
   align-items: center;
-  height: 48px;
-  color: var(--text-muted);
+  gap: 14px;
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  background: none;
-  border: none;
-  width: 100%;
-  cursor: pointer;
-  border-radius: 6px;
   transition: all 0.2s ease;
-  padding-left: 15px; /* Icon နေရာအချိုးကျစေရန် */
+  position: relative;
+  margin: 0 8px;
+  border-radius: 12px;
 }
 
-/* 💡 စာသားများ အိုင်ကွန်နောက်က လိုက်လာစေရန် */
-.menuText {
-  margin-left: 15px;
-  font-size: 0.95rem;
+.sidebarMenu li a i {
+  width: 24px;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.sidebarMenu li a .menuText {
+  font-size: 0.9rem;
   font-weight: 500;
-  white-space: nowrap; /* စာကြောင်းမဆင်းသွားစေရန် */
+  white-space: nowrap;
 }
 
-/* Active State */
+/* Active Menu Item */
 .sidebarMenu li.active a {
-  color: #ffffff;
-  background-color: var(--bg-dark-active);
-  border-left: 4px solid var(--enjoy-primary);
+  background: linear-gradient(135deg, rgba(243, 168, 7, 0.15), rgba(243, 168, 7, 0.05));
+  color: #f3a807;
 }
 
-.sidebarMenu li a:hover, .sidebarMenu li button:hover {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.03);
+.sidebarMenu li.active a i {
+  color: #f3a807;
+}
+
+.activeIndicator {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: #f3a807;
+  border-radius: 3px;
+}
+
+/* Hover Effect */
+.sidebarMenu li a:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  transform: translateX(2px);
+}
+
+/* Logout Section - Fixed at bottom */
+.logoutSection {
+  margin-top: auto;
+  padding: 20px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .logoutBtn {
-  margin-top: auto;
-  margin-bottom: 20px;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: calc(100% - 16px);
+  margin: 0 8px;
+  padding: 12px 16px;
+  background: rgba(231, 76, 60, 0.1);
+  border: none;
+  border-radius: 12px;
+  color: #e74c3c;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
 }
+
+.logoutBtn i {
+  width: 24px;
+  font-size: 1.2rem;
+}
+
+.logoutBtn:hover {
+  background: rgba(231, 76, 60, 0.2);
+  transform: translateX(2px);
+}
+
+/* Sidebar Footer / User Info */
+.sidebarFooter {
+  margin-top: 15px;
+  padding: 0 8px;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.userAvatar {
+  width: 36px;
+  height: 36px;
+  background: rgba(243, 168, 7, 0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.userDetails {
+  flex: 1;
+}
+
+.userRole {
+  display: block;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.userStatus {
+  display: block;
+  color: #2ecc71;
+  font-size: 0.65rem;
+}
+
+/* Logout Confirmation Modal */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  animation: fadeIn 0.2s ease;
+}
+
+.confirmModal {
+  background: white;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 320px;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.confirmHeader {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  padding: 20px;
+  text-align: center;
+}
+
+.confirmIcon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.confirmHeader h4 {
+  margin: 0;
+  color: white;
+  font-size: 1.2rem;
+}
+
+.confirmModal p {
+  text-align: center;
+  padding: 20px;
+  margin: 0;
+  color: #2c3e50;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+.cancelBtn, .confirmBtn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.cancelBtn {
+  background: #f8f9fa;
+  color: #7f8c8d;
+  border: 1px solid #e9ecef;
+}
+
+.cancelBtn:hover {
+  background: #e9ecef;
+}
+
+.confirmBtn {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+}
+
+.confirmBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+/* ============================================ */
+/* RESPONSIVE DESIGN */
+/* ============================================ */
+
+/* Tablet (768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar.expanded {
+    width: 220px;
+  }
+  
+  .brandName {
+    font-size: 1rem;
+  }
+  
+  .sidebarMenu li a .menuText {
+    font-size: 0.85rem;
+  }
+}
+
+/* Mobile (up to 768px) */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 0;
+    transform: translateX(-100%);
+  }
+  
+  .sidebar.expanded {
+    width: 260px;
+    transform: translateX(0);
+  }
+  
+  .sidebar.expanded .sidebarBrand {
+    padding: 16px;
+  }
+  
+  .sidebar.expanded .sidebarMenu li a {
+    padding: 10px 16px;
+  }
+  
+  .userInfo {
+    padding: 8px 12px;
+  }
+  
+  .userAvatar {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  
+  .userRole {
+    font-size: 0.75rem;
+  }
+}
+
+/* Small Mobile (up to 480px) */
+@media (max-width: 480px) {
+  .sidebar.expanded {
+    width: 85%;
+    max-width: 280px;
+  }
+  
+  .brandName {
+    font-size: 1rem;
+  }
+  
+  .sidebarMenu li a .menuText {
+    font-size: 0.85rem;
+  }
+  
+  .logoutBtn {
+    margin: 0 12px;
+    width: calc(100% - 24px);
+  }
+  
+  .confirmModal {
+    max-width: 280px;
+  }
+  
+  .confirmHeader h4 {
+    font-size: 1rem;
+  }
+  
+  .confirmModal p {
+    font-size: 0.85rem;
+  }
+}
+
+/* Landscape Mode on Mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .sidebar.expanded {
+    overflow-y: auto;
+  }
+  
+  .sidebarBrand {
+    padding: 12px 16px;
+    margin-bottom: 15px;
+  }
+  
+  .sidebarMenu li a {
+    padding: 8px 16px;
+  }
+  
+  .logoutSection {
+    padding: 10px 0;
+  }
+}
+
+/* Large Desktop (1200px+) */
+@media (min-width: 1200px) {
+  .sidebar.expanded {
+    width: 280px;
+  }
+  
+  .sidebarMenu li a {
+    padding: 14px 20px;
+  }
+  
+  .sidebarMenu li a .menuText {
+    font-size: 1rem;
+  }
+  
+  .brandName {
+    font-size: 1.3rem;
+  }
+}
+
+
+/* header အတွက် CSS (သင့် header CSS ထဲထည့်ပါ) */
+.menuToggleBtn {
+  width: 40px;
+  height: 40px;
+  background: rgba(243, 168, 7, 0.1);
+  border: none;
+  border-radius: 10px;
+  color: #f3a807;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.menuToggleBtn i {
+  font-size: 1.2rem;
+}
+
+.menuToggleBtn:hover {
+  background: rgba(243, 168, 7, 0.2);
+  transform: scale(1.05);
+}
+

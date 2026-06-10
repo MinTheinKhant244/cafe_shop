@@ -1,3 +1,4 @@
+// src/app/store.js
 import { configureStore } from "@reduxjs/toolkit";
 import productReducer from "../features/products/productSlice";
 import authReducer from "../features/auth/authSlice";
@@ -7,10 +8,12 @@ import dashboardReducer from "../features/dashboard/DashboardSlice"
 import tableReducer from "../features/tables/tableSlice"
 import categoryReducer from "../features/categories/categorySlice"
 import uiReducer from './uiSlice';
+import cartReducer from "../features/sales/cartSlice";
 
-const store=configureStore({
-    reducer:{
-        auth:authReducer,
+
+const store = configureStore({
+    reducer: {
+        auth: authReducer,
         ui: uiReducer,
         users: userReducer,
         categories: categoryReducer,
@@ -18,7 +21,8 @@ const store=configureStore({
         orders: orderReducer,
         tables: tableReducer,
         dashboard: dashboardReducer,
+        cart: cartReducer,  // ⭐ ဒီလိုင်းထည့်ပါ
     }
 })
-export default store
 
+export default store

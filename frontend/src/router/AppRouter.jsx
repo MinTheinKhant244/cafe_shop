@@ -8,6 +8,7 @@ import User from "../pages/admin/User.jsx"
 import CashierHome from "../pages/cashier/CashierHome.jsx"
 import Order from "../pages/Order.jsx"
 import Table from "../pages/admin/table.jsx"
+import PosSales from "../features/sales/PosSales.jsx"
 import ProtectedRoute from "../components/ProtectedRoute"
 
 function AppRouter() {
@@ -17,6 +18,16 @@ function AppRouter() {
       <Route path="/" element={<Navigate to="/login" />} />
 
       <Route path="/login" element={<Login />} />
+
+      {/* ⭐ POS Sales Route - ဒီနေရာမှာ ထည့်ပါ */}
+      <Route
+        path="/pos"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "CASHIER"]}>
+            <PosSales />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/admin/dashboard"

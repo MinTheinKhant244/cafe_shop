@@ -5,6 +5,8 @@ import com.hmi.cafe_shop.repository.TableRepository;
 import com.hmi.cafe_shop.service.TableService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -49,4 +51,59 @@ public class TableServiceImpl implements TableService {
     public void deleteTable(Long id) {
         tableRepository.deleteById(id);
     }
+    
+    @Override
+    public TableEntity setTableAsMaster(Long id) {
+        TableEntity table = tableRepository.findById(id).orElseThrow(() -> new RuntimeException("Table not found"));
+        table.setMaster(true);
+        return tableRepository.save(table);
+    }
+    
+    @Override
+    @Transactional
+    public void mergeTables(Long masterTableId, Long subTableId) {
+        TableEntity master = tableRepository.findById(masterTableId)
+                .orElseThrow(() -> new RuntimeException("Master table not found"));
+        TableEntity sub = tableRepository.findById(subTableId)
+                .orElseThrow(() -> new RuntimeException("Sub table not found"));
+
+        // Master Table ကို သတ်မှတ်ခြင်း
+        master.setMaster(true);
+        tableRepository.save(master);
+
+        // Sub Table ကို Master အောက်သို့ ရွှေ့ခြင်း
+        sub.setParentTableId(masterTableId);
+        sub.setStatus("OCCUPIED"); // ပေါင်းလိုက်လျှင် အလိုအလျောက် Occupied ဖြစ်သွားမည်
+        tableRepository.save(sub);
+    }
+
+    @Override
+    @Transactional
+    public void unmergeTable(Long subTableId) {
+        TableEntity sub = tableRepository.findById(subTableId)
+                .orElseThrow(() -> new RuntimeException("Table not found"));
+
+        // Parent ID ကို သိမ်းထားပါ (နောက်မှ Master ကို စစ်ဖို့အတွက်)
+        Long masterId = sub.getParentTableId();
+        
+        if (masterId == null) {
+            throw new RuntimeException("This table is not merged!");
+        }
+
+        // Sub Table ကို ပြန်ခွဲထုတ်ခြင်း
+        sub.setParentTableId(null);
+        sub.setStatus("AVAILABLE");
+        tableRepository.save(sub);
+
+        // Master table ထဲတွင် sub table များ မကျန်တော့လျှင် isMaster ကို false ပြန်လုပ်ခြင်း
+        long remainingSubs = tableRepository.countByParentTableId(masterId);
+        if (remainingSubs == 0) {
+            TableEntity master = tableRepository.findById(masterId).orElse(null);
+            if (master != null) {
+                master.setMaster(false);
+                tableRepository.save(master);
+            }
+        }
+    }
+    
 }

@@ -18,6 +18,7 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && userRole) {
@@ -26,7 +27,7 @@ function Login() {
       if (normalizedRole === "ADMIN" || normalizedRole === "ROLE_ADMIN") {
         navigate("/admin/dashboard"); 
       } else {
-        navigate("/cashier"); // Default fallback route
+        navigate("/cashier");
       }
     }
   }, [isAuthenticated, userRole, navigate]);
@@ -35,49 +36,68 @@ function Login() {
     dispatch(clearError());
   }, [dispatch]);
 
+  // Load saved email if remember me was checked
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberedEmail");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (rememberMe) {
+      localStorage.setItem("rememberedEmail", email);
+    } else {
+      localStorage.removeItem("rememberedEmail");
+    }
     dispatch(loginUser({ email, password }));
   };
 
   return (
-    <div className={`vw-100 vh-100 d-flex justify-content-center align-items-center position-relative ${styles.loginContainer}`}>
-      <div className={`position-absolute top-0 start-0 w-100 h-100 bg-dark opacity-75 ${styles.overlay}`}></div>
-
-      <div className="position-relative z-3 w-100 px-4" style={{ maxWidth: "420px" }}>
+    <div className={styles.loginContainer}>
+      <div className={styles.overlay}></div>
+      
+      <div className={styles.loginCard}>
         
         {/* Logo Section */}
-        <div className="text-center mb-4">
-          <div className="d-flex flex-column align-items-center">
-            <svg viewBox="0 0 100 60" width="80" height="50">
+        <div className={styles.logoSection}>
+          <div className={styles.logoIcon}>
+            <svg viewBox="0 0 100 60" width="70" height="42">
               <path 
                 d="M 20 45 A 15 15 0 0 1 30 20 A 20 20 0 0 1 70 20 A 15 15 0 0 1 80 45 Z" 
                 fill="none" 
                 stroke="#f3a807" 
-                strokeWidth="6" 
+                strokeWidth="5" 
                 strokeLinecap="round"
               />
             </svg>
-            <h1 className="fw-bold m-0" style={{ color: "#f3a807", fontSize: "2.5rem", letterSpacing: "1px" }}>enjoy</h1>
           </div>
+          <h1 className={styles.logoText}>enjoy</h1>
+          <p className={styles.logoSubtext}>Cafe Management System</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
+        <form onSubmit={handleSubmit} className={styles.form}>
           
           {/* Error Feedback Display */}
           {loginError && (
-            <div className="alert alert-danger py-2 px-3 text-center small rounded-1 border-0" role="alert" style={{ fontSize: "0.85rem" }}>
+            <div className={styles.errorAlert}>
+              <span className={styles.errorIcon}>⚠️</span>
               {typeof loginError === "string" ? loginError : "Login failed. Please try again."}
             </div>
           )}
 
           {/* Email Input */}
-          <div className="text-start">
-            <label htmlFor="email" className="text-white form-label small mb-1">Email</label>
+          <div className={styles.inputGroup}>
+            <label htmlFor="email" className={styles.inputLabel}>
+              <span className={styles.labelIcon}>📧</span> Email Address
+            </label>
             <input
               type="email"
               id="email"
-              className="form-control rounded-1 border-0 py-2 text-dark"
+              className={styles.input}
+              placeholder="admin@enjoy.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -86,39 +106,66 @@ function Login() {
           </div>
 
           {/* Password Input */}
-          <div className="text-start">
-            <label htmlFor="password" className="text-white form-label small mb-1">Password</label>
-            <div className="input-group">
+          <div className={styles.inputGroup}>
+            <label htmlFor="password" className={styles.inputLabel}>
+              <span className={styles.labelIcon}>🔒</span> Password
+            </label>
+            <div className={styles.passwordWrapper}>
               <input
                 type={showPassword ? "text" : "password"}
                 id="password"
-                className={`form-control rounded-1 border-0 py-2 text-dark ${styles.passwordInput}`}
+                className={styles.passwordInput}
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
               />
-              
+              <button 
+                type="button"
+                className={styles.passwordToggle}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
             </div>
+          </div>
+
+          {/* Remember Me & Forgot Password */}
+          <div className={styles.optionsRow}>
+            <label className={styles.checkboxLabel}>
+              <input 
+                type="checkbox" 
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className={styles.checkbox}
+              />
+              <span className={styles.checkboxText}>Remember me</span>
+            </label>
+            {/* <a href="#" className={styles.forgotLink}>Forgot password?</a> */}
           </div>
 
           {/* Log In Button */}
           <button 
             type="submit" 
-            className="btn fw-bold w-100 py-2 mt-2 border-0 rounded-1 d-flex justify-content-center align-items-center" 
-            style={{ backgroundColor: "#f3a807", color: "#000000", zIndex: 4 }}
+            className={styles.loginBtn}
             disabled={isLoading}
           >
             {isLoading ? (
-              <div className="spinner-border spinner-border-sm" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
+              <>
+                <div className={styles.spinner}></div>
+                Logging in...
+              </>
             ) : (
               "Log In"
             )}
           </button>
         </form>
 
+        {/* Footer */}
+        <div className={styles.footer}>
+          <p>© 2024 Enjoy Restaurant. All rights reserved.</p>
+        </div>
       </div>
     </div>
   );

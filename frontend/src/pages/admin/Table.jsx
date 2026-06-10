@@ -1,152 +1,304 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchAllTables, addTable, updateTableStatus } from "../../features/tables/tableSlice";
+import {
+  fetchAllTables,
+  addTable,
+  updateTableStatus,
+  mergeTables,
+  unmergeTable,
+  setMaster,
+} from "../../features/tables/tableSlice";
 import { toggleSidebar } from "../../app/uiSlice";
 import Sidebar from "../../components/Sidebar";
-import styles from "../../assets/css/menuItem.module.css";
+import styles from "../../assets/css/table.module.css";
 
 function Table() {
   const dispatch = useDispatch();
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-
   const { list: tables, loading } = useSelector((state) => state.tables);
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded || false);
 
-  const [showModal, setShowModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedTable, setSelectedTable] = useState(null);
   const [tableNo, setTableNo] = useState("");
   const [error, setError] = useState("");
+  const [selectedSubTableId, setSelectedSubTableId] = useState(null);
+  const [selectedMasterTableId, setSelectedMasterTableId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchAllTables());
   }, [dispatch]);
 
-  const filteredTables = tables?.filter((t) => {
-    const matchesSearch = t.tableNo.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === "all" || t.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
-
   const handleSave = async (e) => {
     e.preventDefault();
-    setError("");
-    const result = await dispatch(addTable({ tableNo, status: "AVAILABLE" }));
-
-    if (result.type === "tables/add/rejected") {
-      setError(result.payload || "Could not add table.");
-    } else {
-      setShowModal(false);
+    try {
+      await dispatch(addTable({ tableNo })).unwrap();
       setTableNo("");
+      setShowAddModal(false);
+      setError("");
       dispatch(fetchAllTables());
+    } catch (err) {
+      setError(err || "Failed to add table");
     }
+  };
+
+  const handleMergeAction = async () => {
+    if (!selectedMasterTableId) {
+      alert("Please select master table");
+      return;
+    }
+    if (!selectedSubTableId) {
+      alert("Invalid table");
+      return;
+    }
+    try {
+      await dispatch(mergeTables({ masterTableId: selectedMasterTableId, subTableId: selectedSubTableId })).unwrap();
+      setShowMergeModal(false);
+      setSelectedMasterTableId(null);
+      setSelectedSubTableId(null);
+      dispatch(fetchAllTables());
+    } catch (err) {
+      alert(err || "Merge failed");
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    return status === "AVAILABLE" ? "🟢" : "🔴";
+  };
+
+  const getTypeIcon = (type, isMaster, parentTableId) => {
+    if (isMaster) return "👑";
+    if (parentTableId) return "🔗";
+    return "📋";
   };
 
   return (
     <div className={`${styles.layout} ${isExpanded ? styles.sidebarExpanded : ""}`}>
       <Sidebar />
-      
+
       <div className={styles.mainContent}>
-        {/* Header Section */}
-        <header className={`${styles.topHeader} d-flex align-items-center mb-4 justify-content-between`}>
-          <div className="d-flex align-items-center">
-            <button 
-              className="btn btn-light shadow-sm me-3 d-flex align-items-center justify-content-center" 
-              onClick={() => dispatch(toggleSidebar())}
-              style={{ width: "40px", height: "40px", borderRadius: "8px", border: "1px solid #dee2e6" }}
-            >
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
               ☰
             </button>
-            <h2 className="mb-0">Table Management</h2>
+            <h1 className={styles.pageTitle}>🪑 Table Management</h1>
           </div>
-          
-          <button className={styles.addBtn} onClick={() => setShowModal(true)}>
+          <button className={styles.addBtn} onClick={() => setShowAddModal(true)}>
             + Add New Table
           </button>
-        </header>
+        </div>
 
-        {/* Search & Filter Section */}
-        <div className="row mb-4">
-          <div className="col-md-6">
-            <input 
-              type="text" className="form-control" placeholder="Search by table number..." 
-              value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        {/* Statistics Bar */}
+        <div className={styles.statsBar}>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{tables?.length || 0}</span>
+            <span className={styles.statLabel}>Total Tables</span>
           </div>
-          <div className="col-md-6">
-            <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="AVAILABLE">Available</option>
-              <option value="OCCUPIED">Occupied</option>
-            </select>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{tables?.filter(t => t.status === "AVAILABLE").length || 0}</span>
+            <span className={styles.statLabel}>Available</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{tables?.filter(t => t.status === "OCCUPIED").length || 0}</span>
+            <span className={styles.statLabel}>Occupied</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{tables?.filter(t => t.isMaster).length || 0}</span>
+            <span className={styles.statLabel}>Master Tables</span>
           </div>
         </div>
 
+        {/* Table Grid */}
         <div className={styles.tableContainer}>
           {loading ? (
-            <p className="text-center mt-5">Loading tables...</p>
+            <div className={styles.loading}>Loading tables...</div>
           ) : (
-            <table className={styles.adminTable}>
-              <thead>
-                <tr>
-                  <th>Table No</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTables?.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.tableNo}</td>
-                    <td>
-                      <span className={`badge ${t.status === 'AVAILABLE' ? 'bg-success' : 'bg-danger'}`}>
-                        {t.status}
+            <div className={styles.tableGrid}>
+              {tables?.map((t) => (
+                <div key={t.id} className={styles.tableCard}>
+                  <div className={styles.tableHeader}>
+                    <span className={styles.tableNumber}>{t.tableNo}</span>
+                    <button 
+                      className={styles.detailBtn} 
+                      onClick={() => {
+                        setSelectedTable(t);
+                        setShowDetailModal(true);
+                      }}
+                      title="View Details"
+                    >
+                      👁️
+                    </button>
+                  </div>
+                  
+                  <div className={styles.tableBody}>
+                    <div className={styles.tableInfo}>
+                      <span className={`${styles.statusIndicator} ${t.status === "AVAILABLE" ? styles.statusAvailable : styles.statusOccupied}`}>
+                        {getStatusIcon(t.status)} {t.status}
                       </span>
-                    </td>
-                    <td className={styles.actionCell}>
-                      <button
-                        className={styles.editBtn}
-                        onClick={() => dispatch(updateTableStatus({
-                            id: t.id,
-                            status: t.status === 'AVAILABLE' ? 'OCCUPIED' : 'AVAILABLE'
-                        }))}
+                      <span className={styles.typeBadge}>
+                        {getTypeIcon(t.type, t.isMaster, t.parentTableId)} {t.isMaster ? "MASTER" : t.parentTableId ? "SUB" : "NORMAL"}
+                      </span>
+                    </div>
+                    
+                    {t.parentTableId && (
+                      <div className={styles.parentInfo}>
+                        Sub of: Table #{t.parentTableId}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className={styles.tableActions}>
+                    {!t.isMaster && !t.parentTableId && (
+                      <>
+                        <button 
+                          className={styles.masterBtn}
+                          onClick={() => dispatch(setMaster(t.id)).then(() => dispatch(fetchAllTables()))}
+                        >
+                          👑 Set Master
+                        </button>
+                        <button 
+                          className={styles.mergeBtn}
+                          onClick={() => {
+                            setSelectedSubTableId(t.id);
+                            setShowMergeModal(true);
+                          }}
+                        >
+                          🔗 Merge
+                        </button>
+                      </>
+                    )}
+                    
+                    {t.parentTableId && (
+                      <button 
+                        className={styles.unmergeBtn}
+                        onClick={() => dispatch(unmergeTable(t.id)).then(() => dispatch(fetchAllTables()))}
                       >
-                        {t.status === 'AVAILABLE' ? 'Mark Occupied' : 'Mark Available'}
+                        🔓 Unmerge
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+                    
+                    <button 
+                      className={`${t.status === "AVAILABLE" ? styles.occupyBtn : styles.releaseBtn}`}
+                      onClick={() =>
+                        dispatch(updateTableStatus({
+                          id: t.id,
+                          status: t.status === "AVAILABLE" ? "OCCUPIED" : "AVAILABLE",
+                        })).then(() => dispatch(fetchAllTables()))
+                      }
+                    >
+                      {t.status === "AVAILABLE" ? "🚪 Occupy" : "✅ Release"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Add New Table</h5>
-                <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+      {/* Add Table Modal */}
+      {showAddModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowAddModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>➕ Add New Table</h3>
+              <button className={styles.modalClose} onClick={() => setShowAddModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleSave}>
+              <div className={styles.formGroup}>
+                <label>Table Number *</label>
+                <input 
+                  type="text" 
+                  placeholder="Enter table number (e.g., T01, Table 1)"
+                  value={tableNo} 
+                  onChange={(e) => setTableNo(e.target.value)} 
+                  required 
+                />
+                {error && <small className={styles.errorText}>{error}</small>}
               </div>
-              <form onSubmit={handleSave}>
-                <div className="modal-body">
-                  {error && <div className="alert alert-danger">{error}</div>}
-                  <input
-                    className="form-control"
-                    placeholder="Enter Table Number"
-                    value={tableNo}
-                    onChange={(e) => setTableNo(e.target.value)}
-                    required
-                  />
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.cancelBtn} onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="submit" className={styles.saveBtn}>Add Table</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Merge Modal */}
+      {showMergeModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowMergeModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>🔗 Merge Table to Master</h3>
+              <button className={styles.modalClose} onClick={() => setShowMergeModal(false)}>×</button>
+            </div>
+            <div className={styles.formGroup}>
+              <label>Select Master Table *</label>
+              <select 
+                className={styles.selectInput}
+                value={selectedMasterTableId || ""}
+                onChange={(e) => setSelectedMasterTableId(Number(e.target.value))}
+              >
+                <option value="">-- Select Master Table --</option>
+                {tables.filter((t) => t.isMaster).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    Table #{t.tableNo} {t.status === "AVAILABLE" ? "🟢" : "🔴"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.cancelBtn} onClick={() => setShowMergeModal(false)}>Cancel</button>
+              <button className={styles.saveBtn} onClick={handleMergeAction}>Confirm Merge</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {showDetailModal && selectedTable && (
+        <div className={styles.modalOverlay} onClick={() => setShowDetailModal(false)}>
+          <div className={styles.detailModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>📋 Table Details</h3>
+              <button className={styles.modalClose} onClick={() => setShowDetailModal(false)}>×</button>
+            </div>
+            <div className={styles.detailContent}>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Table Number:</span>
+                <span className={styles.detailValue}>{selectedTable.tableNo}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Status:</span>
+                <span className={`${styles.statusBadge} ${selectedTable.status === "AVAILABLE" ? styles.statusAvailable : styles.statusOccupied}`}>
+                  {getStatusIcon(selectedTable.status)} {selectedTable.status}
+                </span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Type:</span>
+                <span className={styles.typeBadgeLarge}>
+                  {selectedTable.isMaster ? "👑 Master Table" : selectedTable.parentTableId ? "🔗 Sub Table" : "📋 Normal Table"}
+                </span>
+              </div>
+              {selectedTable.parentTableId && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Parent Table:</span>
+                  <span className={styles.detailValue}>Table #{selectedTable.parentTableId}</span>
                 </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                  <button type="submit" className="btn btn-primary">Save Table</button>
+              )}
+              {selectedTable.subTables && selectedTable.subTables.length > 0 && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Sub Tables:</span>
+                  <span className={styles.detailValue}>
+                    {selectedTable.subTables.map(st => `Table #${st.tableNo}`).join(", ")}
+                  </span>
                 </div>
-              </form>
+              )}
             </div>
           </div>
         </div>

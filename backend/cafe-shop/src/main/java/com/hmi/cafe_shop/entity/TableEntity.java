@@ -19,8 +19,12 @@ public class TableEntity {
 
     @Column(name = "table_no", unique = true)
     private String tableNo;
+    
+    private Long parentTableId;
+    private boolean isMaster = false; 
 
     private String status;
+    
     
     @OneToMany(mappedBy = "table")
     @JsonIgnore

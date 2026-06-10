@@ -48,4 +48,33 @@ public class TableController {
         tableService.deleteTable(id);
         return ResponseEntity.ok("Table Deleted Successfully");
     }
+    
+    @PostMapping("/set-master/{id}")
+    public ResponseEntity<TableEntity> setMaster(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(tableService.setTableAsMaster(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
+    }
+    
+    @PostMapping("/merge")
+    public ResponseEntity<String> mergeTables(@RequestParam Long masterTableId, @RequestParam Long subTableId) {
+        try {
+            tableService.mergeTables(masterTableId, subTableId);
+            return ResponseEntity.ok("Tables merged successfully.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/unmerge/{subTableId}")
+    public ResponseEntity<String> unmergeTable(@PathVariable Long subTableId) {
+        try {
+            tableService.unmergeTable(subTableId);
+            return ResponseEntity.ok("Table unmerged successfully.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
 }

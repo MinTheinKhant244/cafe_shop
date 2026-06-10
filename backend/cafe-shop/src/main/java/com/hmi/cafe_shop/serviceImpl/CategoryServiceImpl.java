@@ -46,5 +46,19 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryRepository.findByIsActiveTrue();
     }
     
-    @Override public List<Category> getAllCategories() { return categoryRepository.findAll(); }
+    @Override public List<Category> getAllCategories() { 
+    	return categoryRepository.findAll(); 
+    }
+    
+    @Override
+    public Category getCategoryById(Long id) {
+        return categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+    }
+
+    @Override
+    public List<Category> searchCategories(String keyword) {
+        return categoryRepository.findByNameContainingIgnoreCase(keyword);
+    }
+
 }

@@ -1,28 +1,22 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { toggleSidebar } from "../../app/uiSlice";
-import { 
-  fetchAllUsers, 
-  addUser, 
-  updateUser, 
-  deactivateUser, 
-  activateUser 
-} from "../../features/users/userSlice";
+import { fetchAllUsers, addUser, updateUser, deactivateUser, activateUser } from "../../features/users/userSlice";
 import Sidebar from "../../components/Sidebar";
-import styles from "../../assets/css/menuItem.module.css"; 
+import styles from "../../assets/css/user.module.css";
 
 function User() {
   const dispatch = useDispatch();
-  
+  const { list: users, loading } = useSelector((state) => state.users);
+  const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
-  const { list: users, loading } = useSelector((state) => state.users);
-
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [detailUser, setDetailUser] = useState(null);
   const [formData, setFormData] = useState({ 
     id: null, name: "", email: "", password: "", role: "CASHIER", isActive: true 
   });
@@ -31,40 +25,47 @@ function User() {
     dispatch(fetchAllUsers());
   }, [dispatch]);
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "Never";
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
   const filteredUsers = users.filter((user) => {
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === "all" || user.role === filterRole;
-    const matchesStatus = filterStatus === "all" || 
-                          (filterStatus === "active" ? user.isActive : !user.isActive);
-    
+    const matchesStatus = filterStatus === "all" || (filterStatus === "active" ? user.isActive : !user.isActive);
     return matchesSearch && matchesRole && matchesStatus;
   });
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const payload = { ...formData };
+    if (!payload.password || payload.password.trim() === "") delete payload.password;
+    
     try {
-      if (isEditing) {
-        await dispatch(updateUser(formData)).unwrap();
-      } else {
-        await dispatch(addUser(formData)).unwrap();
-      }
+      if (isEditing) await dispatch(updateUser(payload)).unwrap();
+      else await dispatch(addUser(payload)).unwrap();
       setShowModal(false);
+      resetForm();
       dispatch(fetchAllUsers());
-    } catch (error) {
-      alert("Error saving user! Check your permissions.");
-    }
+    } catch (error) { alert("Action Failed: " + error); }
   };
 
-  const handleToggleActive = async (user) => {
-    try {
-      user.isActive ? await dispatch(deactivateUser(user.id)).unwrap() : await dispatch(activateUser(user.id)).unwrap();
-      dispatch(fetchAllUsers());
-    } catch (error) {
-      alert("Error updating status!");
+  const resetForm = () => {
+    setFormData({ id: null, name: "", email: "", password: "", role: "CASHIER", isActive: true });
+  };
+
+  const getRoleBadge = (role) => {
+    if (role === "ADMIN") {
+      return <span className={`${styles.roleBadge} ${styles.roleAdmin}`}>👑 ADMIN</span>;
     }
+    return <span className={`${styles.roleBadge} ${styles.roleCashier}`}>💰 CASHIER</span>;
+  };
+
+  const getInitials = (name) => {
+    return name?.charAt(0).toUpperCase() || "?";
   };
 
   return (
@@ -72,81 +73,145 @@ function User() {
       <Sidebar />
       <div className={styles.mainContent}>
         
-        {/* Header Section */}
-        <header className={`${styles.topHeader} d-flex align-items-center mb-4 justify-content-between`}>
-          <div className="d-flex align-items-center">
-            <button 
-              className="btn btn-light shadow-sm me-3 d-flex align-items-center justify-content-center" 
-              onClick={() => dispatch(toggleSidebar())}
-              style={{ width: "40px", height: "40px", borderRadius: "8px", border: "1px solid #dee2e6" }}
-            >
-              ☰
-            </button>
-            <h2 className="mb-0">Staffs Control</h2>
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+          <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
+            ☰
+          </button>
+            <h1 className={styles.pageTitle}>👥 Staff Management</h1>
           </div>
           <button className={styles.addBtn} onClick={() => { 
-            setFormData({name: "", email: "", password: "", role: "CASHIER", isActive: true}); 
-            setIsEditing(false); setShowModal(true); 
-          }}>+ Add Staff</button>
-        </header>
+            resetForm(); 
+            setIsEditing(false); 
+            setShowModal(true); 
+          }}>
+            + Add Staff
+          </button>
+        </div>
 
-        {/* Search & Filter Section */}
-        <div className="row mb-3">
-          <div className="col-md-4">
+        {/* Statistics Bar */}
+        <div className={styles.statsBar}>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{users.length}</span>
+            <span className={styles.statLabel}>Total Staff</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{users.filter(u => u.isActive).length}</span>
+            <span className={styles.statLabel}>Active</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{users.filter(u => !u.isActive).length}</span>
+            <span className={styles.statLabel}>Inactive</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{users.filter(u => u.role === "ADMIN").length}</span>
+            <span className={styles.statLabel}>Admins</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{users.filter(u => u.role === "CASHIER").length}</span>
+            <span className={styles.statLabel}>Cashiers</span>
+          </div>
+        </div>
+
+        {/* Filter Section */}
+        <div className={styles.filterSection}>
+          <div className={styles.searchBox}>
             <input 
-              type="text" className="form-control" placeholder="Search name or email..." 
-              value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              type="text" 
+              placeholder="🔍 Search by name or email..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
-          <div className="col-md-4">
-            <select className="form-select" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-              <option value="all">All Roles</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="CASHIER">CASHIER</option>
+          <div className={styles.filterGroup}>
+            <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
+              <option value="all">📂 All Roles</option>
+              <option value="ADMIN">👑 ADMIN</option>
+              <option value="CASHIER">💰 CASHIER</option>
             </select>
-          </div>
-          <div className="col-md-4">
-            <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">🔄 All Status</option>
+              <option value="active">✅ Active</option>
+              <option value="inactive">⛔ Inactive</option>
             </select>
           </div>
         </div>
 
+        {/* User Table */}
         <div className={styles.tableContainer}>
           {loading ? (
-            <div className="text-center p-5">Loading Staffs...</div>
+            <div className={styles.loading}>Loading users...</div>
+          ) : filteredUsers.length === 0 ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyIcon}>📭</span>
+              <p>No users found</p>
+            </div>
           ) : (
-            <table className={styles.adminTable}>
+            <table className={styles.userTable}>
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>User</th>
                   <th>Email</th>
                   <th>Role</th>
                   <th>Status</th>
+                  <th>Last Login</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
+                {filteredUsers.map(user => (
                   <tr key={user.id}>
-                    <td>{user.name}</td>
-                    <td>{user.email}</td>
-                    <td>{user.role}</td>
                     <td>
-                      <span className={user.isActive ? "badge bg-success" : "badge bg-secondary"}>
-                        {user.isActive ? "Active" : "Inactive"}
+                      <div className={styles.userCell}>
+                        <div className={styles.userAvatar} style={{ background: user.role === "ADMIN" ? "#3498db" : "#2ecc71" }}>
+                          {getInitials(user.name)}
+                        </div>
+                        <div className={styles.userInfo}>
+                          <span className={styles.userName}>{user.name}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className={styles.userEmail}>{user.email}</td>
+                    <td>{getRoleBadge(user.role)}</td>
+                    <td>
+                      <span className={`${styles.statusBadge} ${user.isActive ? styles.statusActive : styles.statusInactive}`}>
+                        {user.isActive ? "🟢 Active" : "🔴 Inactive"}
                       </span>
                     </td>
-                    <td className={styles.actionCell}>
-                      <button className={styles.editBtn} onClick={() => { setFormData(user); setIsEditing(true); setShowModal(true); }}>Edit</button>
-                      <button 
-                        className={user.isActive ? styles.softDeleteBtn : styles.addBtn} 
-                        onClick={() => handleToggleActive(user)}
-                      >
-                        {user.isActive ? "Deactivate" : "Activate"}
-                      </button>
+                    <td>
+                      <span className={styles.lastLogin}>
+                        {formatDateTime(user.lastLogin)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className={styles.actionButtons}>
+                        <button 
+                          className={styles.viewBtn} 
+                          onClick={() => setDetailUser(user)} 
+                          title="View Details"
+                        >
+                          👁️
+                        </button>
+                        <button 
+                          className={styles.editBtn} 
+                          onClick={() => { 
+                            setFormData(user); 
+                            setIsEditing(true); 
+                            setShowModal(true); 
+                          }} 
+                          title="Edit"
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          className={user.isActive ? styles.deactivateBtn : styles.activateBtn} 
+                          onClick={() => dispatch(user.isActive ? deactivateUser(user.id) : activateUser(user.id))}
+                          title={user.isActive ? "Deactivate" : "Activate"}
+                        >
+                          {user.isActive ? "🔴" : "🟢"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -156,31 +221,113 @@ function User() {
         </div>
       </div>
 
-      {/* Input Modal */}
+      {/* Add/Edit Modal */}
       {showModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <form onSubmit={handleSave}>
-                <div className="modal-header">
-                    <h5 className="modal-title">{isEditing ? "Edit Staff" : "Add New Staff"}</h5>
+        <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>{isEditing ? "✏️ Edit Staff" : "➕ Add New Staff"}</h3>
+              <button className={styles.modalClose} onClick={() => setShowModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleSave}>
+              <div className={styles.formGroup}>
+                <label>Full Name *</label>
+                <input 
+                  type="text" 
+                  placeholder="Enter full name"
+                  value={formData.name} 
+                  onChange={e => setFormData({...formData, name: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Email Address *</label>
+                <input 
+                  type="email" 
+                  placeholder="Enter email address"
+                  value={formData.email} 
+                  onChange={e => setFormData({...formData, email: e.target.value})} 
+                  required 
+                />
+              </div>
+              {!isEditing && (
+                <div className={styles.formGroup}>
+                  <label>Password *</label>
+                  <input 
+                    type="password" 
+                    placeholder="Enter password"
+                    value={formData.password} 
+                    onChange={e => setFormData({...formData, password: e.target.value})} 
+                    required 
+                  />
                 </div>
-                <div className="modal-body">
-                  <input className="form-control mb-2" placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-                  <input className="form-control mb-2" type="email" placeholder="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
-                  {!isEditing && (
-                    <input className="form-control mb-2" type="password" placeholder="Password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
-                  )}
-                  <select className="form-select mb-2" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="CASHIER">CASHIER</option>
-                  </select>
+              )}
+              <div className={styles.formGroup}>
+                <label>Role *</label>
+                <select 
+                  value={formData.role} 
+                  onChange={e => setFormData({...formData, role: e.target.value})}
+                >
+                  <option value="ADMIN">👑 ADMIN</option>
+                  <option value="CASHIER">💰 CASHIER</option>
+                </select>
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className={styles.saveBtn}>Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {detailUser && (
+        <div className={styles.modalOverlay} onClick={() => setDetailUser(null)}>
+          <div className={styles.detailModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>👤 Staff Details</h3>
+              <button className={styles.modalClose} onClick={() => setDetailUser(null)}>×</button>
+            </div>
+            <div className={styles.detailContent}>
+              <div className={styles.detailAvatar}>
+                <div className={styles.detailAvatarCircle} style={{ background: detailUser.role === "ADMIN" ? "#3498db" : "#2ecc71" }}>
+                  {getInitials(detailUser.name)}
                 </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                  <button type="submit" className="btn btn-primary">Save</button>
+              </div>
+              <div className={styles.detailInfo}>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Full Name:</span>
+                  <span className={styles.detailValue}>{detailUser.name}</span>
                 </div>
-              </form>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Email:</span>
+                  <span className={styles.detailValue}>{detailUser.email}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Role:</span>
+                  <span className={styles.detailValue}>{getRoleBadge(detailUser.role)}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Status:</span>
+                  <span className={styles.detailValue}>
+                    <span className={`${styles.statusBadge} ${detailUser.isActive ? styles.statusActive : styles.statusInactive}`}>
+                      {detailUser.isActive ? "🟢 Active" : "🔴 Inactive"}
+                    </span>
+                  </span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Last Login:</span>
+                  <span className={styles.detailValue}>{formatDateTime(detailUser.lastLogin)}</span>
+                </div>
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Joined:</span>
+                  <span className={styles.detailValue}>{formatDateTime(detailUser.createdAt)}</span>
+                </div>
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.closeBtn} onClick={() => setDetailUser(null)}>Close</button>
             </div>
           </div>
         </div>

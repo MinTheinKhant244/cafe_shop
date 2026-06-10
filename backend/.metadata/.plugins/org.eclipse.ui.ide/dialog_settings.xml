@@ -43,6 +43,7 @@
 		<item key="SmartImportRootWizardPage.STORE_NESTED_PROJECTS" value="true"/>
 		<item key="SmartImportRootWizardPage.STORE_CONFIGURE_NATURES" value="true"/>
 		<list key="org.eclipse.ui.internal.wizards.datatransfer.SmartImportRootWizardPage.knownSources">
+			<item value="D:\cafe_shop\backend\cafe-shop"/>
 			<item value="D:\b4SpringWS\one-to-many"/>
 			<item value="D:\b4SpringWS\test"/>
 		</list>

@@ -1,6 +1,8 @@
 package com.hmi.cafe_shop.controller;
 
 import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.hmi.cafe_shop.entity.User;
@@ -31,4 +33,16 @@ public class UserController {
 
     @GetMapping("/active")
     public ResponseEntity<List<User>> getActiveUsers() { return ResponseEntity.ok(userService.getActiveUsers()); }
+    
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody Map<String, String> request) {
+        userService.forgotPassword(request.get("email"));
+        return ResponseEntity.ok("Reset link sent to your email.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody Map<String, String> request) {
+        userService.resetPassword(request.get("token"), request.get("newPassword"));
+        return ResponseEntity.ok("Password has been reset successfully.");
+    }
 }

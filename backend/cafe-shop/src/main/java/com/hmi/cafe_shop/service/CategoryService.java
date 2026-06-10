@@ -10,4 +10,6 @@ public interface CategoryService {
     void deactivateCategory(Long id);
     List<Category> getAllCategories();
     List<Category> getActiveCategories();
+    Category getCategoryById(Long id); 
+    List<Category> searchCategories(String keyword);
 }

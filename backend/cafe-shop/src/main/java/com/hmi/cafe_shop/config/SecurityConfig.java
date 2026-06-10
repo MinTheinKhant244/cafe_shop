@@ -23,7 +23,6 @@ public class SecurityConfig {
                 // PUBLIC ENDPOINTS
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll() 
-                .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/categories/all", "/api/categories/active").permitAll()
                 .requestMatchers("/api/products/all", "/api/products/active", "/api/products/category/**").permitAll()
                 
@@ -37,6 +36,7 @@ public class SecurityConfig {
                 
                 // Tables
                 .requestMatchers("/api/tables/all", "/api/tables/id/**").authenticated()
+                .requestMatchers("/api/tables/merge", "/api/tables/unmerge/**").hasAnyRole("ADMIN", "CASHIER")                .requestMatchers("/api/tables/**").authenticated()
                 
                 // Stock Logs & Suppliers
                 .requestMatchers("/api/stock-logs/all", "/api/stock-logs/product/**").authenticated()

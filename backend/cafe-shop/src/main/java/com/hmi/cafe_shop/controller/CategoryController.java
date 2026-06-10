@@ -42,4 +42,15 @@ public class CategoryController {
         categoryService.deactivateCategory(id);
         return ResponseEntity.ok().build();
     }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<Category> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCategoryById(id));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Category>> search(@RequestParam String keyword) {
+        return ResponseEntity.ok(categoryService.searchCategories(keyword));
+    }
+
 }

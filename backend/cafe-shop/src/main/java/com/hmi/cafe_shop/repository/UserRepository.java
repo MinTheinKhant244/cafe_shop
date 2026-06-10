@@ -10,4 +10,6 @@ import com.hmi.cafe_shop.entity.User;
 public interface UserRepository extends JpaRepository<User, Long> {
 	Optional<User> findByEmail(String email);
 	List<User> findByIsActiveTrue();
+	
+	Optional<User> findByResetToken(String resetToken);
 }

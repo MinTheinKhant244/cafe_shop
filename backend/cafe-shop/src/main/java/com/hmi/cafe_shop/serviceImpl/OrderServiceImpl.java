@@ -1,6 +1,7 @@
 package com.hmi.cafe_shop.serviceImpl;
 
 import com.hmi.cafe_shop.entity.Order;
+import com.hmi.cafe_shop.entity.TableEntity;
 import com.hmi.cafe_shop.repository.OrderRepository;
 import com.hmi.cafe_shop.repository.UserRepository;
 import com.hmi.cafe_shop.service.OrderService;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor // Repository များကို Auto Inject လုပ်ပေးသည်
@@ -19,17 +21,48 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;   
     private final TableRepository tableRepository;
 
+//    @Override
+//    public Order createOrder(Order order) {
+//    	// invoice number auto generate
+//    	order.setInvoiceNo(InvoiceGenerator.generateInvoiceNo());
+//        if (order.getCreatedBy() != null && order.getCreatedBy().getId() != null) {
+//            userRepository.findById(order.getCreatedBy().getId())
+//                    .ifPresent(order::setCreatedBy);
+//        }
+//        if (order.getTable() != null && order.getTable().getId() != null) {
+//            tableRepository.findById(order.getTable().getId())
+//                    .ifPresent(order::setTable);
+//        }
+//        
+//        if (order.getStatus() == null) order.setStatus("PREPARING");
+//        if (order.getPaymentStatus() == null) order.setPaymentStatus("PENDING");
+//
+//        return orderRepository.save(order);
+//    }
+    
     @Override
     public Order createOrder(Order order) {
-    	// invoice number auto generate
-    	order.setInvoiceNo(InvoiceGenerator.generateInvoiceNo());
+        order.setInvoiceNo(InvoiceGenerator.generateInvoiceNo());
+        
         if (order.getCreatedBy() != null && order.getCreatedBy().getId() != null) {
             userRepository.findById(order.getCreatedBy().getId())
                     .ifPresent(order::setCreatedBy);
         }
+        
+        // Table နှင့် Combined Tables Logic
         if (order.getTable() != null && order.getTable().getId() != null) {
-            tableRepository.findById(order.getTable().getId())
-                    .ifPresent(order::setTable);
+            tableRepository.findById(order.getTable().getId()).ifPresent(masterTable -> {
+                order.setTable(masterTable);
+                
+                // Master Table ID ကို အခြေခံပြီး သူ့အောက်က sub-tables တွေအားလုံးကို ရှာမယ်
+                List<TableEntity> allRelatedTables = tableRepository.findAllTablesInOrder(masterTable.getId());
+                
+                // Table Number တွေကို String အဖြစ် ပေါင်းမယ် (ဥပမာ: "T1, T2")
+                String combined = allRelatedTables.stream()
+                                                  .map(TableEntity::getTableNo)
+                                                  .collect(Collectors.joining(", "));
+                order.setCombinedTables(combined);
+            });
         }
         
         if (order.getStatus() == null) order.setStatus("PREPARING");

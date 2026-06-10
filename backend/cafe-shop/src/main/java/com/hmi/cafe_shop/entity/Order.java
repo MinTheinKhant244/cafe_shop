@@ -29,6 +29,11 @@ public class Order {
     @ManyToOne
     @JoinColumn(name = "table_id")
     private TableEntity table;
+    
+ // အရေးကြီး: ပေါင်းထားသော Table များအားလုံးကို သိမ်းရန်
+    // ဥပမာ: "T1, T2, T3" ဟု String အနေဖြင့် သိမ်းဆည်းမည်
+    @Column(name = "combined_tables")
+    private String combinedTables;
 
     @Column(name = "total_amount")
     private Double totalAmount;

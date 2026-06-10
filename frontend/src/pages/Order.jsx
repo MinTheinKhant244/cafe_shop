@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { toggleSidebar } from "../app/uiSlice";
 import { fetchAllOrders, updateOrderStatus, updatePaymentStatus } from "../features/orders/orderSlice";
 import Sidebar from "../components/Sidebar";
-import styles from "../assets/css/menuItem.module.css";
+import styles from "../assets/css/order.module.css";
 
 function Order() {
   const dispatch = useDispatch();
@@ -25,7 +25,6 @@ function Order() {
     const matchesDate = !filterDate || order.createdAt?.startsWith(filterDate);
     const matchesStatus = filterStatus === "all" || order.status === filterStatus;
     const matchesPayment = filterPayment === "all" || order.paymentStatus === filterPayment;
-    
     return matchesSearch && matchesDate && matchesStatus && matchesPayment;
   });
 
@@ -33,18 +32,33 @@ function Order() {
     try {
       await dispatch(updateOrderStatus({ id, status })).unwrap();
       dispatch(fetchAllOrders());
-    } catch (error) {
-      alert("Failed to update status!");
-    }
+    } catch (error) { alert("Failed to update status!"); }
   };
 
   const handlePaymentChange = async (id, paymentStatus) => {
     try {
       await dispatch(updatePaymentStatus({ id, paymentStatus })).unwrap();
       dispatch(fetchAllOrders());
-    } catch (error) {
-      alert("Failed to update payment!");
-    }
+    } catch (error) { alert("Failed to update payment!"); }
+  };
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      PENDING: { class: styles.statusPending, icon: "⏳", text: "Pending" },
+      PREPARING: { class: styles.statusPreparing, icon: "🍳", text: "Preparing" },
+      COMPLETED: { class: styles.statusCompleted, icon: "✅", text: "Completed" }
+    };
+    const s = statusMap[status] || statusMap.PENDING;
+    return <span className={`${styles.statusBadge} ${s.class}`}>{s.icon} {s.text}</span>;
+  };
+
+  const getPaymentBadge = (paymentStatus) => {
+    const paymentMap = {
+      UNPAID: { class: styles.paymentUnpaid, icon: "❌", text: "Unpaid" },
+      PAID: { class: styles.paymentPaid, icon: "💰", text: "Paid" }
+    };
+    const p = paymentMap[paymentStatus] || paymentMap.UNPAID;
+    return <span className={`${styles.paymentBadge} ${p.class}`}>{p.icon} {p.text}</span>;
   };
 
   return (
@@ -52,79 +66,163 @@ function Order() {
       <Sidebar />
       <div className={styles.mainContent}>
         
-        {/* Header Section */}
-        <header className={`${styles.topHeader} d-flex align-items-center mb-4 justify-content-between`}>
-          <div className="d-flex align-items-center">
-            <button 
-              className="btn btn-light shadow-sm me-3 d-flex align-items-center justify-content-center" 
-              onClick={() => dispatch(toggleSidebar())}
-              style={{ width: "40px", height: "40px", borderRadius: "8px", border: "1px solid #dee2e6" }}
-            >
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
               ☰
             </button>
-            <h2 className="mb-0">Order Management</h2>
+            <h1 className={styles.pageTitle}>📋 Order Management</h1>
           </div>
-        </header>
+          <div className={styles.statsSummary}>
+            <div className={styles.statSummaryItem}>
+              <span className={styles.statSummaryValue}>{filteredOrders?.length || 0}</span>
+              <span className={styles.statSummaryLabel}>Orders</span>
+            </div>
+            <div className={styles.statSummaryItem}>
+              <span className={styles.statSummaryValue}>
+                {filteredOrders?.filter(o => o.paymentStatus === "UNPAID").length || 0}
+              </span>
+              <span className={styles.statSummaryLabel}>Unpaid</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistics Bar */}
+        <div className={styles.statsBar}>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{orders?.length || 0}</span>
+            <span className={styles.statLabel}>Total Orders</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{orders?.filter(o => o.status === "PENDING").length || 0}</span>
+            <span className={styles.statLabel}>Pending</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{orders?.filter(o => o.status === "PREPARING").length || 0}</span>
+            <span className={styles.statLabel}>Preparing</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{orders?.filter(o => o.status === "COMPLETED").length || 0}</span>
+            <span className={styles.statLabel}>Completed</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{orders?.filter(o => o.paymentStatus === "PAID").length || 0}</span>
+            <span className={styles.statLabel}>Paid</span>
+          </div>
+        </div>
 
         {/* Filter Section */}
-        <div className="row mb-4 g-2">
-          <div className="col-md-3">
-            <input type="text" className="form-control" placeholder="Search Invoice..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <div className={styles.filterSection}>
+          <div className={styles.searchBox}>
+            <input 
+              type="text" 
+              placeholder="🔍 Search by invoice number..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+            />
           </div>
-          <div className="col-md-3">
-            <input type="date" className="form-control" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
-          </div>
-          <div className="col-md-3">
-            <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="PENDING">PENDING</option>
-              <option value="PREPARING">PREPARING</option>
-              <option value="COMPLETED">COMPLETED</option>
+          <div className={styles.filterGroup}>
+            <input 
+              type="date" 
+              className={styles.dateInput}
+              value={filterDate} 
+              onChange={(e) => setFilterDate(e.target.value)} 
+            />
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">📊 All Status</option>
+              <option value="PENDING">⏳ Pending</option>
+              <option value="PREPARING">🍳 Preparing</option>
+              <option value="COMPLETED">✅ Completed</option>
             </select>
-          </div>
-          <div className="col-md-3">
-            <select className="form-select" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}>
-              <option value="all">All Payment</option>
-              <option value="UNPAID">UNPAID</option>
-              <option value="PAID">PAID</option>
+            <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}>
+              <option value="all">💳 All Payment</option>
+              <option value="UNPAID">❌ Unpaid</option>
+              <option value="PAID">💰 Paid</option>
             </select>
           </div>
         </div>
 
+        {/* Order Table */}
         <div className={styles.tableContainer}>
           {loading ? (
-            <div className="text-center p-5">Loading Orders...</div>
+            <div className={styles.loading}>Loading Orders...</div>
+          ) : filteredOrders?.length === 0 ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyIcon}>📭</span>
+              <p>No orders found</p>
+            </div>
           ) : (
-            <table className={styles.adminTable}>
+            <table className={styles.orderTable}>
               <thead>
                 <tr>
-                  <th>Invoice</th>
+                  <th>Invoice No</th>
                   <th>Date</th>
-                  <th>Amount</th>
+                  <th>Table</th>
+                  <th>Total Amount</th>
                   <th>Status</th>
                   <th>Payment</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOrders?.map((order) => (
                   <tr key={order.id}>
-                    <td onClick={() => setSelectedOrder(order)} style={{ cursor: "pointer", color: "#007bff", fontWeight: "bold" }}>
-                      {order.invoiceNo}
-                    </td>
-                    <td>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "-"}</td>
-                    <td>{order.totalAmount?.toLocaleString()} Ks</td>
                     <td>
-                      <select className="form-select form-select-sm" value={order.status} onChange={(e) => handleStatusChange(order.id, e.target.value)}>
-                        <option value="PENDING">PENDING</option>
-                        <option value="PREPARING">PREPARING</option>
-                        <option value="COMPLETED">COMPLETED</option>
+                      <span 
+                        className={styles.invoiceLink} 
+                        onClick={() => setSelectedOrder(order)}
+                      >
+                        #{order.invoiceNo}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={styles.dateText}>
+                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "-"}
+                      </span>
+                      <small className={styles.timeText}>
+                        {order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : ""}
+                      </small>
+                    </td>
+                    <td>
+                      <span className={styles.tableBadge}>
+                        🪑 {order.table?.tableNo || "N/A"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={styles.amountText}>
+                        {order.totalAmount?.toLocaleString()} Ks
+                      </span>
+                    </td>
+                    <td>
+                      <select 
+                        className={`${styles.statusSelect} ${styles[`statusSelect_${order.status}`]}`}
+                        value={order.status} 
+                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                      >
+                        <option value="PENDING">⏳ Pending</option>
+                        <option value="PREPARING">🍳 Preparing</option>
+                        <option value="COMPLETED">✅ Completed</option>
                       </select>
                     </td>
                     <td>
-                      <select className="form-select form-select-sm" value={order.paymentStatus} onChange={(e) => handlePaymentChange(order.id, e.target.value)}>
-                        <option value="UNPAID">UNPAID</option>
-                        <option value="PAID">PAID</option>
+                      <select 
+                        className={`${styles.paymentSelect} ${styles[`paymentSelect_${order.paymentStatus}`]}`}
+                        value={order.paymentStatus} 
+                        onChange={(e) => handlePaymentChange(order.id, e.target.value)}
+                      >
+                        <option value="UNPAID">❌ Unpaid</option>
+                        <option value="PAID">💰 Paid</option>
                       </select>
+                    </td>
+                    <td>
+                      <button 
+                        className={styles.viewBtn} 
+                        onClick={() => setSelectedOrder(order)}
+                        title="View Details"
+                      >
+                        👁️ View
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -134,31 +232,77 @@ function Order() {
         </div>
       </div>
 
-      {/* Detail Modal */}
+      {/* Details Modal */}
       {selectedOrder && (
-        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5>Order Details: {selectedOrder.invoiceNo}</h5>
-                <button className="btn-close" onClick={() => setSelectedOrder(null)}></button>
+        <div className={styles.modalOverlay} onClick={() => setSelectedOrder(null)}>
+          <div className={styles.detailModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>🧾 Invoice Details</h3>
+              <button className={styles.modalClose} onClick={() => setSelectedOrder(null)}>×</button>
+            </div>
+            <div className={styles.detailContent}>
+              <div className={styles.invoiceHeader}>
+                <div className={styles.invoiceNumber}>
+                  <span className={styles.label}>Invoice No:</span>
+                  <span className={styles.value}>#{selectedOrder.invoiceNo}</span>
+                </div>
+                <div className={styles.invoiceDate}>
+                  <span className={styles.label}>Date:</span>
+                  <span className={styles.value}>
+                    {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "-"}
+                  </span>
+                </div>
               </div>
-              <div className="modal-body">
-                <p><strong>Table:</strong> {selectedOrder.table?.tableNo || "N/A"}</p>
-                <p><strong>Total Amount:</strong> {selectedOrder.totalAmount?.toLocaleString()} Ks</p>
-                <hr />
-                <h6>Items:</h6>
-                <ul>
-                  {selectedOrder.orderItems?.map((item) => (
-                    <li key={item.id}>
-                      {item.product?.name} (x{item.quantity}) - {item.price} Ks
-                    </li>
-                  ))}
-                </ul>
+              
+              <div className={styles.infoRow}>
+                <div className={styles.infoItem}>
+                  <span className={styles.infoLabel}>🪑 Table</span>
+                  <span className={styles.infoValue}>{selectedOrder.table?.tableNo || "N/A"}</span>
+                </div>
+                <div className={styles.infoItem}>
+                  <span className={styles.infoLabel}>💰 Total Amount</span>
+                  <span className={styles.infoValueAmount}>{selectedOrder.totalAmount?.toLocaleString()} Ks</span>
+                </div>
               </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setSelectedOrder(null)}>Close</button>
+
+              <div className={styles.infoRow}>
+                <div className={styles.infoItem}>
+                  <span className={styles.infoLabel}>📊 Status</span>
+                  {getStatusBadge(selectedOrder.status)}
+                </div>
+                <div className={styles.infoItem}>
+                  <span className={styles.infoLabel}>💳 Payment</span>
+                  {getPaymentBadge(selectedOrder.paymentStatus)}
+                </div>
               </div>
+
+              <hr className={styles.divider} />
+              
+              <h4 className={styles.itemsTitle}>🛍️ Order Items</h4>
+              <div className={styles.itemsList}>
+                <div className={styles.itemsHeader}>
+                  <span>Item</span>
+                  <span>Qty</span>
+                  <span>Price</span>
+                  <span>Total</span>
+                </div>
+                {selectedOrder.orderItems?.map((item) => (
+                  <div key={item.id} className={styles.itemRow}>
+                    <span className={styles.itemName}>{item.product?.name || "N/A"}</span>
+                    <span className={styles.itemQty}>x{item.quantity}</span>
+                    <span className={styles.itemPrice}>{item.price?.toLocaleString()} Ks</span>
+                    <span className={styles.itemTotal}>{(item.price * item.quantity).toLocaleString()} Ks</span>
+                  </div>
+                ))}
+              </div>
+              
+              <div className={styles.totalRow}>
+                <span>Grand Total</span>
+                <span>{selectedOrder.totalAmount?.toLocaleString()} Ks</span>
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.closeBtn} onClick={() => setSelectedOrder(null)}>Close</button>
             </div>
           </div>
         </div>

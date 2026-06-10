@@ -11,4 +11,8 @@ public interface TableService {
     List<TableEntity> getTablesByStatus(String status);
     TableEntity updateTableStatus(Long id, String status);
     void deleteTable(Long id);
+    
+    TableEntity setTableAsMaster(Long id);
+    void mergeTables(Long masterTableId, Long subTableId);
+    void unmergeTable(Long subTableId);
 }

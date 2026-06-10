@@ -2,11 +2,7 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { toggleSidebar } from "../../app/uiSlice";
 import { 
-  fetchAllCategories, 
-  addCategory, 
-  updateCategory, 
-  deactivateCategory, 
-  activateCategory 
+  fetchAllCategories, addCategory, updateCategory, deactivateCategory, activateCategory, searchCategories
 } from "../../features/categories/categorySlice";
 import Sidebar from "../../components/Sidebar";
 import styles from "../../assets/css/menuItem.module.css";
@@ -15,55 +11,53 @@ function Category() {
   const dispatch = useDispatch();
   
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+  const [formData, setFormData] = useState({ id: null, name: "", description: "", isActive: true });
 
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
   const { list: categories, loading } = useSelector((state) => state.categories);
-
-  const [showModal, setShowModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ 
-    id: null, name: "", description: "", isActive: true 
-  });
 
   useEffect(() => {
     dispatch(fetchAllCategories());
   }, [dispatch]);
 
-  const filteredCategories = categories.filter((cat) => {
-    const matchesSearch = 
-      cat.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      cat.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = 
-      filterStatus === "all" || 
-      (filterStatus === "active" ? cat.isActive : !cat.isActive);
-    
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchTerm.trim().length > 0) dispatch(searchCategories(searchTerm));
+      else dispatch(fetchAllCategories());
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchTerm, dispatch]);
 
   const handleSave = async (e) => {
     e.preventDefault();
     try {
-      if (isEditing) {
-        await dispatch(updateCategory(formData)).unwrap();
-      } else {
-        await dispatch(addCategory(formData)).unwrap();
-      }
+      if (isEditing) await dispatch(updateCategory(formData)).unwrap();
+      else await dispatch(addCategory(formData)).unwrap();
       setShowModal(false);
+      resetForm();
       dispatch(fetchAllCategories());
-    } catch (error) {
-      alert("Error saving category!");
-    }
+    } catch (error) { alert("Error saving category!"); }
+  };
+
+  const resetForm = () => {
+    setFormData({ id: null, name: "", description: "", isActive: true });
   };
 
   const handleToggleActive = async (cat) => {
     try {
-      cat.isActive ? await dispatch(deactivateCategory(cat.id)).unwrap() : await dispatch(activateCategory(cat.id)).unwrap();
-      dispatch(fetchAllCategories());
-    } catch (error) {
-      alert("Error updating status!");
-    }
+      cat.isActive ? await dispatch(deactivateCategory(cat.id)).unwrap() 
+                   : await dispatch(activateCategory(cat.id)).unwrap();
+    } catch (error) { alert("Error updating status!"); }
+  };
+
+  // Truncate description
+  const truncateDesc = (desc, maxLength = 60) => {
+    if (!desc) return "-";
+    if (desc.length <= maxLength) return desc;
+    return desc.substring(0, maxLength) + "...";
   };
 
   return (
@@ -71,45 +65,55 @@ function Category() {
       <Sidebar />
       <div className={styles.mainContent}>
         
-        {/* Header Section */}
-        <header className={`${styles.topHeader} d-flex align-items-center mb-4 justify-content-between`}>
-          {/* Menu Toggle Button */}
-          <button 
-            className="btn btn-light shadow-sm d-flex align-items-center justify-content-center" 
-            onClick={() => dispatch(toggleSidebar())}
-            style={{ width: "40px", height: "40px", borderRadius: "8px", border: "1px solid #dee2e6" }}
-          >
-            ☰
-          </button>
-          
-          <h2 className="mb-0">Category Management</h2>
-          
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
+              ☰
+            </button>
+            <h1 className={styles.pageTitle}>📁 Category Management</h1>
+          </div>
           <button className={styles.addBtn} onClick={() => { 
-            setFormData({name: "", description: "", isActive: true}); 
-            setIsEditing(false); setShowModal(true); 
-          }}>+ Add Category</button>
-        </header>
+            resetForm();
+            setIsEditing(false); 
+            setShowModal(true); 
+          }}>
+            + Add Category
+          </button>
+        </div>
 
         {/* Search & Filter Section */}
-        <div className="row mb-3">
-          <div className="col-md-6">
+        <div className={styles.filterSection}>
+          <div className={styles.searchBox}>
             <input 
-              type="text" className="form-control" placeholder="Search by name or description..." 
-              value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              type="text" 
+              placeholder="🔍 Search categories by name..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} 
             />
-          </div>
-          <div className="col-md-6">
-            <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
           </div>
         </div>
 
+        {/* Statistics Bar - Compact */}
+        <div className={styles.statsBar}>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{categories.length}</span>
+            <span className={styles.statLabel}>Total</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{categories.filter(c => c.isActive).length}</span>
+            <span className={styles.statLabel}>Active</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{categories.filter(c => !c.isActive).length}</span>
+            <span className={styles.statLabel}>Inactive</span>
+          </div>
+        </div>
+
+        {/* Table */}
         <div className={styles.tableContainer}>
           {loading ? (
-            <div className="text-center p-5">Loading Categories...</div>
+            <div className={styles.loading}>Loading...</div>
           ) : (
             <table className={styles.adminTable}>
               <thead>
@@ -121,50 +125,123 @@ function Category() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCategories.map((cat) => (
-                  <tr key={cat.id}>
-                    <td>{cat.name}</td>
-                    <td>{cat.description}</td>
-                    <td>
-                      <span className={cat.isActive ? "badge bg-success" : "badge bg-secondary"}>
-                        {cat.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className={styles.actionCell}>
-                      <button className={styles.editBtn} onClick={() => { setFormData(cat); setIsEditing(true); setShowModal(true); }}>Edit</button>
-                      <button 
-                        className={cat.isActive ? styles.softDeleteBtn : styles.addBtn} 
-                        onClick={() => handleToggleActive(cat)}
-                      >
-                        {cat.isActive ? "Deactivate" : "Activate"}
-                      </button>
+                {categories.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className={styles.emptyRow}>
+                      📭 No categories found
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  categories.map((cat) => (
+                    <tr key={cat.id}>
+                      <td>
+                        <span className={styles.productName}>
+                          {cat.name}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={styles.descriptionText}>
+                          {truncateDesc(cat.description)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`${styles.statusBadge} ${cat.isActive ? styles.statusActive : styles.statusInactive}`}>
+                          {cat.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className={styles.actionButtons}>
+                          <button 
+                            className={styles.viewBtn} 
+                            onClick={() => setDetailItem(cat)} 
+                            title="View"
+                          >
+                            👁️
+                          </button>
+                          <button 
+                            className={styles.editBtn} 
+                            onClick={() => { 
+                              setFormData(cat); 
+                              setIsEditing(true); 
+                              setShowModal(true); 
+                            }} 
+                            title="Edit"
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            className={cat.isActive ? styles.deactivateBtn : styles.activateBtn} 
+                            onClick={() => handleToggleActive(cat)}
+                            title={cat.isActive ? "Deactivate" : "Activate"}
+                          >
+                            {cat.isActive ? "🔴" : "🟢"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           )}
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       {showModal && (
-        <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <form onSubmit={handleSave}>
-                <div className="modal-header">
-                  <h5 className="modal-title">{isEditing ? "Edit Category" : "Add New Category"}</h5>
-                </div>
-                <div className="modal-body">
-                  <input className="form-control mb-2" placeholder="Category Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-                  <textarea className="form-control mb-2" placeholder="Description" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                  <button type="submit" className="btn btn-primary">Save</button>
-                </div>
-              </form>
+        <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>{isEditing ? "✏️ Edit Category" : "➕ Add New Category"}</h3>
+              <button className={styles.modalClose} onClick={() => setShowModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleSave}>
+              <div className={styles.formGroup}>
+                <label>Category Name *</label>
+                <input 
+                  type="text" 
+                  placeholder="Enter category name..."
+                  value={formData.name} 
+                  onChange={e => setFormData({...formData, name: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Description</label>
+                <textarea 
+                  rows="3"
+                  placeholder="Enter category description..."
+                  value={formData.description} 
+                  onChange={e => setFormData({...formData, description: e.target.value})} 
+                />
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className={styles.saveBtn}>Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {detailItem && (
+        <div className={styles.modalOverlay} onClick={() => setDetailItem(null)}>
+          <div className={styles.detailModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.detailHeader}>
+              <h3>📋 Category Details</h3>
+              <button className={styles.modalClose} onClick={() => setDetailItem(null)}>×</button>
+            </div>
+            <div className={styles.detailContent}>
+              <div className={styles.detailInfo}>
+                <p><strong>Name:</strong> {detailItem.name}</p>
+                <p><strong>Description:</strong> {detailItem.description || "No description"}</p>
+                <p><strong>Status:</strong> 
+                  <span className={`${styles.statusBadge} ${detailItem.isActive ? styles.statusActive : styles.statusInactive}`}>
+                    {detailItem.isActive ? "Active" : "Inactive"}
+                  </span>
+                </p>
+              </div>
             </div>
           </div>
         </div>

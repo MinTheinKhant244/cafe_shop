@@ -2,11 +2,7 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { toggleSidebar } from "../../app/uiSlice";
 import {
-  fetchAllProducts,
-  addProduct,
-  updateProduct,
-  deactivateProduct,
-  activateProduct,
+  fetchAllProducts, addProduct, updateProduct, deactivateProduct, activateProduct,
 } from "../../features/products/productSLice";
 import { fetchAllCategories } from "../../features/categories/categorySlice";
 import Sidebar from "../../components/Sidebar";
@@ -14,19 +10,23 @@ import styles from "../../assets/css/menuItem.module.css";
 
 function MenuItem() {
   const dispatch = useDispatch();
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
   const { list: products, loading } = useSelector((state) => state.products);
   const { list: categories } = useSelector((state) => state.categories);
 
+  // Search & Filter States
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  
   const [formData, setFormData] = useState({
-    id: null, name: "", price: "", description: "", categoryId: "", isActive: "true", imageFile: null,
+    id: null, name: "", price: "", description: "", categoryId: "", isActive: true, imageFile: null,
   });
 
   useEffect(() => {
@@ -34,12 +34,22 @@ function MenuItem() {
     dispatch(fetchAllCategories());
   }, [dispatch]);
 
+  // Filtering Logic
   const filteredProducts = products.filter((item) => {
-    const matchesSearch = item.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === "" || item.category?.id == filterCategory;
+    const matchesSearch = item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          item.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === "" || Number(item.category?.id) === Number(filterCategory);
     const matchesStatus = filterStatus === "all" || (filterStatus === "active" ? item.isActive : !item.isActive);
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({ ...formData, imageFile: file });
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -52,99 +62,267 @@ function MenuItem() {
     if (formData.imageFile) data.append("imageFile", formData.imageFile);
 
     try {
-      if (isEditing) {
-        await dispatch(updateProduct({ id: formData.id, formData: data })).unwrap();
-      } else {
-        await dispatch(addProduct(data)).unwrap();
-      }
+      if (isEditing) await dispatch(updateProduct({ id: formData.id, formData: data })).unwrap();
+      else await dispatch(addProduct(data)).unwrap();
       setShowModal(false);
-      dispatch(fetchAllProducts());
-    } catch (error) {
-      alert("Error saving item!");
-    }
+      setImagePreview(null);
+      resetForm();
+    } catch (error) { alert("Error saving item!"); }
   };
 
-  const handleToggleActive = async (item) => {
-    item.isActive ? await dispatch(deactivateProduct(item.id)).unwrap() : await dispatch(activateProduct(item.id)).unwrap();
-    dispatch(fetchAllProducts());
+  const resetForm = () => {
+    setFormData({
+      id: null, name: "", price: "", description: "", categoryId: "", isActive: true, imageFile: null,
+    });
+    setImagePreview(null);
+  };
+
+  // Truncate description
+  const truncateDesc = (desc, maxLength = 50) => {
+    if (!desc) return "-";
+    if (desc.length <= maxLength) return desc;
+    return desc.substring(0, maxLength) + "...";
   };
 
   return (
     <div className={`${styles.layout} ${isExpanded ? styles.sidebarExpanded : ""}`}>
       <Sidebar />
       <div className={styles.mainContent}>
-        
-        {/* Header Section */}
-        <header className={`${styles.topHeader} d-flex align-items-center mb-4 justify-content-between`}>
-          <button className="btn btn-light shadow-sm" onClick={() => dispatch(toggleSidebar())} style={{width: "40px", height: "40px", borderRadius: "8px", border: "1px solid #dee2e6"}}>☰</button>
-          <h2 className="mb-0">Menu Items Management</h2>
-          <button className={styles.addBtn} onClick={() => { setFormData({id: null, name: "", price: "", description: "", categoryId: "", isActive: "true", imageFile: null}); setIsEditing(false); setShowModal(true); }}>+ Add New Item</button>
-        </header>
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
+              ☰
+            </button>
+            <h1 className={styles.pageTitle}>🍽️ Menu Management</h1>
+          </div>
+          <button className={styles.addBtn} onClick={() => {
+            resetForm();
+            setIsEditing(false);
+            setShowModal(true);
+          }}>
+            + Add New Item
+          </button>
+        </div>
 
-        {/* Filter Section */}
-        <div className="row mb-4">
-          <div className="col-md-4"><input type="text" className="form-control" placeholder="Search..." onChange={(e) => setSearchTerm(e.target.value)} /></div>
-          <div className="col-md-4">
-            <select className="form-select" onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="">All Categories</option>
+        {/* Search & Filter Section */}
+        <div className={styles.filterSection}>
+          <div className={styles.searchBox}>
+            <input 
+              type="text" 
+              placeholder="🔍 Search by name or description..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} 
+            />
+          </div>
+          <div className={styles.filterGroup}>
+            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+              <option value="">📂 All Categories</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-          </div>
-          <div className="col-md-4">
-            <select className="form-select" onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">🔄 All Status</option>
+              <option value="active">✅ Active</option>
+              <option value="inactive">⛔ Inactive</option>
             </select>
+          </div>
+        </div>
+
+        {/* Statistics Bar - Compact */}
+        <div className={styles.statsBar}>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{filteredProducts.length}</span>
+            <span className={styles.statLabel}>Items</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{products.filter(p => p.isActive).length}</span>
+            <span className={styles.statLabel}>Active</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{categories.length}</span>
+            <span className={styles.statLabel}>Categories</span>
           </div>
         </div>
 
         {/* Table */}
         <div className={styles.tableContainer}>
-          <table className={styles.adminTable}>
-            <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              {filteredProducts.map((item) => (
-                <tr key={item.id}>
-                  <td><img src={`http://localhost:8080/uploads/${item.image}`} alt={item.name} style={{width: "50px", height: "50px", objectFit: "cover", borderRadius: "5px"}} /></td>
-                  <td>{item.name}</td>
-                  <td>{item.category?.name}</td>
-                  <td>{item.price} Ks</td>
-                  <td><span className={`badge ${item.isActive ? "bg-success" : "bg-secondary"}`}>{item.isActive ? "Active" : "Inactive"}</span></td>
-                  <td>
-                    <button className={styles.editBtn} onClick={() => { setFormData({id: item.id, name: item.name, price: item.price, description: item.description, categoryId: item.category?.id, isActive: item.isActive ? "true" : "false", imageFile: null}); setIsEditing(true); setShowModal(true); }}>Edit</button>
-                    <button className={item.isActive ? styles.softDeleteBtn : styles.addBtn} onClick={() => handleToggleActive(item)}>{item.isActive ? "Deactivate" : "Activate"}</button>
-                  </td>
+          {loading ? (
+            <div className={styles.loading}>Loading...</div>
+          ) : (
+            <table className={styles.adminTable}>
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Price</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className={styles.emptyRow}>
+                      📭 No items found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProducts.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <img 
+                          src={`http://localhost:8080/uploads/${item.image}`} 
+                          alt={item.name} 
+                          className={styles.productImage}
+                          onClick={() => setPreviewImage(item.image)}
+                        />
+                      </td>
+                      <td><span className={styles.productName}>{item.name}</span></td>
+                      <td><span className={styles.categoryBadge}>{item.category?.name || "-"}</span></td>
+                      <td><span className={styles.descriptionText}>{truncateDesc(item.description)}</span></td>
+                      <td><span className={styles.priceText}>{Number(item.price).toLocaleString()} Ks</span></td>
+                      <td>
+                        <span className={`${styles.statusBadge} ${item.isActive ? styles.statusActive : styles.statusInactive}`}>
+                          {item.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className={styles.actionButtons}>
+                          <button className={styles.viewBtn} onClick={() => setDetailItem(item)} title="View">👁️</button>
+                          <button className={styles.editBtn} onClick={() => { 
+                            setFormData({...item, categoryId: item.category?.id}); 
+                            setIsEditing(true); 
+                            setShowModal(true); 
+                          }} title="Edit">✏️</button>
+                          <button 
+                            className={item.isActive ? styles.deactivateBtn : styles.activateBtn} 
+                            onClick={() => dispatch(item.isActive ? deactivateProduct(item.id) : activateProduct(item.id))}
+                            title={item.isActive ? "Deactivate" : "Activate"}
+                          >
+                            {item.isActive ? "🔴" : "🟢"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="modal show d-block" style={{backgroundColor: "rgba(0,0,0,0.5)"}}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <form onSubmit={handleSave}>
-                <div className="modal-header"><h5 className="modal-title">{isEditing ? "Edit Item" : "Add New Item"}</h5></div>
-                <div className="modal-body">
-                  <input className="form-control mb-2" placeholder="Name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
-                  <input className="form-control mb-2" type="number" placeholder="Price" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} required />
-                  <textarea className="form-control mb-2" placeholder="Description" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
-                  <select className="form-select mb-2" value={formData.categoryId} onChange={(e) => setFormData({...formData, categoryId: e.target.value})} required>
+        <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>{isEditing ? "✏️ Edit Item" : "➕ Add New Item"}</h3>
+              <button className={styles.modalClose} onClick={() => setShowModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleSave}>
+              {imagePreview && (
+                <div className={styles.imagePreview}>
+                  <img src={imagePreview} alt="Preview" />
+                </div>
+              )}
+              <div className={styles.formGroup}>
+                <label>Name *</label>
+                <input 
+                  type="text" 
+                  value={formData.name} 
+                  onChange={(e) => setFormData({...formData, name: e.target.value})} 
+                  required 
+                />
+              </div>
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label>Price (Ks) *</label>
+                  <input 
+                    type="number" 
+                    value={formData.price} 
+                    onChange={(e) => setFormData({...formData, price: e.target.value})} 
+                    required 
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Category *</label>
+                  <select 
+                    value={formData.categoryId} 
+                    onChange={(e) => setFormData({...formData, categoryId: e.target.value})} 
+                    required
+                  >
                     <option value="">Select Category</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
-                  <input type="file" className="form-control" onChange={(e) => setFormData({...formData, imageFile: e.target.files[0]})} />
                 </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                  <button type="submit" className="btn btn-primary">Save</button>
-                </div>
-              </form>
+              </div>
+              <div className={styles.formGroup}>
+                <label>Description</label>
+                <textarea 
+                  rows="3"
+                  placeholder="Enter item description..."
+                  value={formData.description} 
+                  onChange={(e) => setFormData({...formData, description: e.target.value})} 
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Image</label>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleImageChange} 
+                />
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className={styles.saveBtn}>Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {detailItem && (
+        <div className={styles.modalOverlay} onClick={() => setDetailItem(null)}>
+          <div className={styles.detailModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.detailHeader}>
+              <h3>📋 Item Details</h3>
+              <button className={styles.modalClose} onClick={() => setDetailItem(null)}>×</button>
             </div>
+            <div className={styles.detailContent}>
+              {detailItem.image && (
+                <img 
+                  src={`http://localhost:8080/uploads/${detailItem.image}`} 
+                  alt={detailItem.name} 
+                  className={styles.detailImage}
+                />
+              )}
+              <div className={styles.detailInfo}>
+                <p><strong>Name:</strong> {detailItem.name}</p>
+                <p><strong>Category:</strong> {detailItem.category?.name}</p>
+                <p><strong>Price:</strong> {Number(detailItem.price).toLocaleString()} Ks</p>
+                <p><strong>Description:</strong> {detailItem.description || "No description"}</p>
+                <p><strong>Status:</strong> 
+                  <span className={`${styles.statusBadge} ${detailItem.isActive ? styles.statusActive : styles.statusInactive}`}>
+                    {detailItem.isActive ? "Active" : "Inactive"}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className={styles.modalOverlay} onClick={() => setPreviewImage(null)}>
+          <div className={styles.imageModal} onClick={(e) => e.stopPropagation()}>
+            <img src={`http://localhost:8080/uploads/${previewImage}`} alt="Preview" />
+            <button className={styles.imageClose} onClick={() => setPreviewImage(null)}>×</button>
           </div>
         </div>
       )}

@@ -14,4 +14,6 @@ public interface UserService {
     User deactivateUser(Long id);
     Optional<User> getUserByEmail(String email);
     String login(String email, String password);
+    void forgotPassword(String email); 
+    void resetPassword(String token, String newPassword);
 }

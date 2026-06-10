@@ -31,6 +31,19 @@ export const updatePaymentStatus = createAsyncThunk("orders/updatePayment", asyn
   }
 });
 
+// orderSlice.js ထဲမှာ createOrder ကို ထည့်ပေးပါ
+export const createOrder = createAsyncThunk("orders/create", async (orderData, thunkAPI) => {
+  try {
+    const response = await api.post("/orders/create", orderData);
+    return response.data;
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to create order");
+  }
+});
+
+// extraReducers ထဲမှာ ထည့်ပါ
+
+
 const orderSlice = createSlice({
   name: "orders",
   initialState: { list: [], loading: false, error: null },
@@ -55,7 +68,11 @@ const orderSlice = createSlice({
       .addCase(updatePaymentStatus.fulfilled, (state, action) => {
         const index = state.list.findIndex(o => o.id === action.payload.id);
         if (index !== -1) state.list[index] = action.payload;
-      });
+      })
+
+      .addCase(createOrder.fulfilled, (state, action) => {
+  state.list.unshift(action.payload);
+});
   },
 });
 
