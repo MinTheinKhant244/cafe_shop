@@ -7,7 +7,7 @@ import { clearCart } from "./cartSlice";
 import { toggleSidebar } from "../../app/uiSlice";
 import api from "../../app/api";  // ⭐ api instance ထည့်ပါ
 import Sidebar from "../../components/Sidebar";
-import ProductCard from "../../pages/admin/ProductCard";
+import ProductCard from "../products/ProductCard";
 import CartSidebar from "./CartSidebar";
 import styles from "../../assets/css/posSales.module.css";
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { addToCart } from "../../features/sales/cartSlice";
+import { addToCart } from "../sales/cartSlice";
 import styles from "../../assets/css/posSales.module.css";
 
 function ProductCard({ product }) {

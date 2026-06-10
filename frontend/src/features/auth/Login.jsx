@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { loginUser, selectLoading, selectError, selectAuth, selectUserRole, clearError } from "../features/auth/authSlice";
-import styles from "../assets/css/login.module.css"; 
+import { loginUser, selectLoading, selectError, selectAuth, selectUserRole, clearError } from "./authSlice";
+import styles from "../../assets/css/login.module.css"; 
 
 function Login() {
   const dispatch = useDispatch();

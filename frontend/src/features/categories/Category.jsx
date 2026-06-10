@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { toggleSidebar } from "../../app/uiSlice";
 import { 
   fetchAllCategories, addCategory, updateCategory, deactivateCategory, activateCategory, searchCategories
-} from "../../features/categories/categorySlice";
+} from "./categorySlice";
 import Sidebar from "../../components/Sidebar";
 import styles from "../../assets/css/menuItem.module.css";
 

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { toggleSidebar } from "../app/uiSlice";
-import { fetchAllOrders, updateOrderStatus, updatePaymentStatus } from "../features/orders/orderSlice";
-import Sidebar from "../components/Sidebar";
-import styles from "../assets/css/order.module.css";
+import { toggleSidebar } from "../../app/uiSlice";
+import { fetchAllOrders, updateOrderStatus, updatePaymentStatus } from "./orderSlice";
+import Sidebar from "../../components/Sidebar";
+import styles from "../../assets/css/order.module.css";
 
 function Order() {
   const dispatch = useDispatch();
