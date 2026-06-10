@@ -27,7 +27,7 @@ function Login() {
       if (normalizedRole === "ADMIN" || normalizedRole === "ROLE_ADMIN") {
         navigate("/admin/dashboard"); 
       } else {
-        navigate("/cashier");
+        navigate("/pos");
       }
     }
   }, [isAuthenticated, userRole, navigate]);

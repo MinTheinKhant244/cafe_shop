@@ -75,15 +75,6 @@ function AppRouter() {
       />
 
       <Route
-        path="/cashier"
-        element={
-          <ProtectedRoute role="CASHIER">
-            <CashierHome />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
         path="/orders"
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "CASHIER"]}>
