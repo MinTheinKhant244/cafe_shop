@@ -5,8 +5,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PaymentService {
-    Payment processPayment(Payment payment);
-    Optional<Payment> getPaymentById(Long id);
-    Optional<Payment> getPaymentByOrderId(Long orderId);
-    List<Payment> getAllPayments();
+
+    Payment processPayment(Long orderId, Payment payment);
+
+    Optional<Payment> getById(Long id);
+
+    Optional<Payment> getByOrderId(Long orderId);
+
+    List<Payment> getAll();
 }

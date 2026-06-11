@@ -12,20 +12,22 @@ import com.hmi.cafe_shop.entity.User;
 import com.hmi.cafe_shop.repository.UserRepository;
 
 @Service
-@Transactional // Class တစ်ခုလုံးအတွက် Transaction စီမံခန့်ခွဲမှု
+@Transactional
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    // Correct Constructor Injection for all dependencies
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
     }
 
     @Override
     public User createUser(User user) {
-        // Email ပုံစံ မှန်မမှန် validation ထည့်ရန်သင့်သည်
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists: " + user.getEmail());
         }
@@ -43,7 +45,6 @@ public class UserServiceImpl implements UserService {
         oldUser.setRole(user.getRole());
         oldUser.setIsActive(user.getIsActive());
         
-        // Password အသစ်ပါလာမှသာ encode လုပ်ခြင်း
         if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
             oldUser.setPassword(passwordEncoder.encode(user.getPassword()));
         }
@@ -98,7 +99,9 @@ public class UserServiceImpl implements UserService {
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
         
-        return JwtUtil.generateToken(user.getEmail(), user.getRole());
+        // Ensure role is converted to String safely
+        String roleStr = (user.getRole() != null) ? user.getRole().toString() : "ROLE_USER";
+        return jwtUtil.generateToken(user.getEmail(), roleStr);
     }
 
     @Override
@@ -106,13 +109,11 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Random Token တစ်ခု Generate လုပ်ခြင်း
         String resetToken = java.util.UUID.randomUUID().toString();
-        user.setResetToken(resetToken); // User entity တွင် resetToken column ရှိရမည်
-        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15)); // 15 မိနစ်အတွင်းသာ အလုပ်လုပ်မည်
+        user.setResetToken(resetToken);
+        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
         userRepository.save(user);
-
-        // TODO: ဤနေရာတွင် Email ပို့သည့် Service (JavaMailSender) ကို ခေါ်ယူပါ
+        
         System.out.println("Reset Token: " + resetToken); 
     }
 
@@ -126,7 +127,7 @@ public class UserServiceImpl implements UserService {
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
-        user.setResetToken(null); // Token ကို တစ်ခါသုံးပြီးလျှင် ဖျက်ပစ်ပါ
+        user.setResetToken(null);
         user.setResetTokenExpiry(null);
         userRepository.save(user);
     }

@@ -5,14 +5,24 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TableService {
+    
     TableEntity createTable(TableEntity table);
+    
     Optional<TableEntity> getTableById(Long id);
+    
     List<TableEntity> getAllTables();
+    
     List<TableEntity> getTablesByStatus(String status);
+    
     TableEntity updateTableStatus(Long id, String status);
+    
     void deleteTable(Long id);
     
     TableEntity setTableAsMaster(Long id);
+    
+    TableEntity removeMaster(Long id);
+    
     void mergeTables(Long masterTableId, Long subTableId);
+    
     void unmergeTable(Long subTableId);
 }

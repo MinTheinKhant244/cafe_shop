@@ -5,11 +5,16 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrderService {
+
     Order createOrder(Order order);
-    Optional<Order> getOrderById(Long id);
-    Optional<Order> getOrderByInvoiceNo(String invoiceNo);
+
     List<Order> getAllOrders();
-    List<Order> getOrdersByStatus(String status);
-    Order updateOrderStatus(Long id, String status);
-    Order updatePaymentStatus(Long id, String paymentStatus);
+
+    Optional<Order> getById(Long id);
+
+    Optional<Order> getByInvoice(String invoiceNo);
+
+    Order updateStatus(Long id, String status);
+
+    Order updatePayment(Long id, String paymentStatus);
 }

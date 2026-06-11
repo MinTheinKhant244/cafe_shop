@@ -9,8 +9,7 @@ import java.util.List;
 
 @Repository
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
-    Optional<Inventory> findByProductId(Long productId);
-
+	
     @Query("SELECT i FROM Inventory i WHERE i.quantity <= i.lowStockThreshold")
     List<Inventory> findLowStockProducts();
 }

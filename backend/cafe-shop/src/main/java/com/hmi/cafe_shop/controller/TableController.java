@@ -5,7 +5,10 @@ import com.hmi.cafe_shop.service.TableService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tables")
@@ -18,13 +21,14 @@ public class TableController {
         this.tableService = tableService;
     }
 
- // TableController.java
     @PostMapping("/create")
     public ResponseEntity<?> create(@RequestBody TableEntity table) {
         try {
             return ResponseEntity.ok(tableService.createTable(table));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
 
@@ -38,43 +42,86 @@ public class TableController {
         return ResponseEntity.ok(tableService.getTablesByStatus(status));
     }
 
-    @PatchMapping("/update-status/{id}") // Status တစ်ခုတည်း ပြင်မှာမို့ PatchMapping က ပိုသင့်တော်ပါတယ်
-    public ResponseEntity<TableEntity> updateStatus(@PathVariable Long id, @RequestParam String status) {
-        return ResponseEntity.ok(tableService.updateTableStatus(id, status));
+    @PatchMapping("/update-status/{id}")
+    public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestParam String status) {
+        try {
+            TableEntity updatedTable = tableService.updateTableStatus(id, status);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Status updated successfully");
+            response.put("table", updatedTable);
+            return ResponseEntity.ok(updatedTable);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
     }
 
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
-        tableService.deleteTable(id);
-        return ResponseEntity.ok("Table Deleted Successfully");
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        try {
+            tableService.deleteTable(id);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Table Deleted Successfully");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
     }
     
     @PostMapping("/set-master/{id}")
-    public ResponseEntity<TableEntity> setMaster(@PathVariable Long id) {
+    public ResponseEntity<?> setMaster(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(tableService.setTableAsMaster(id));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+    }
+    
+    @PostMapping("/remove-master/{id}")
+    public ResponseEntity<?> removeMaster(@PathVariable Long id) {
+        try {
+            TableEntity table = tableService.removeMaster(id);
+            return ResponseEntity.ok(table);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
     
     @PostMapping("/merge")
-    public ResponseEntity<String> mergeTables(@RequestParam Long masterTableId, @RequestParam Long subTableId) {
+    public ResponseEntity<?> mergeTables(@RequestParam Long masterTableId, @RequestParam Long subTableId) {
         try {
             tableService.mergeTables(masterTableId, subTableId);
-            return ResponseEntity.ok("Tables merged successfully.");
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Tables merged successfully.");
+            response.put("masterTableId", String.valueOf(masterTableId));
+            response.put("subTableId", String.valueOf(subTableId));
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
 
     @PostMapping("/unmerge/{subTableId}")
-    public ResponseEntity<String> unmergeTable(@PathVariable Long subTableId) {
+    public ResponseEntity<?> unmergeTable(@PathVariable Long subTableId) {
         try {
             tableService.unmergeTable(subTableId);
-            return ResponseEntity.ok("Table unmerged successfully.");
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Table unmerged successfully.");
+            response.put("subTableId", String.valueOf(subTableId));
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
 }

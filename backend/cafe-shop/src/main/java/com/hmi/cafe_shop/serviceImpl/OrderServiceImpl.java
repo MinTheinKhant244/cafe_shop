@@ -1,84 +1,62 @@
 package com.hmi.cafe_shop.serviceImpl;
 
-import com.hmi.cafe_shop.entity.Order;
-import com.hmi.cafe_shop.entity.TableEntity;
-import com.hmi.cafe_shop.repository.OrderRepository;
-import com.hmi.cafe_shop.repository.UserRepository;
+import com.hmi.cafe_shop.entity.*;
+import com.hmi.cafe_shop.repository.*;
 import com.hmi.cafe_shop.service.OrderService;
-import com.hmi.cafe_shop.repository.TableRepository; 
 import com.hmi.cafe_shop.util.InvoiceGenerator;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor // Repository များကို Auto Inject လုပ်ပေးသည်
+@RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
-    private final UserRepository userRepository;   
-    private final TableRepository tableRepository;
+    private final RecipeRepository recipeRepository;
+    private final InventoryRepository inventoryRepository;
 
-//    @Override
-//    public Order createOrder(Order order) {
-//    	// invoice number auto generate
-//    	order.setInvoiceNo(InvoiceGenerator.generateInvoiceNo());
-//        if (order.getCreatedBy() != null && order.getCreatedBy().getId() != null) {
-//            userRepository.findById(order.getCreatedBy().getId())
-//                    .ifPresent(order::setCreatedBy);
-//        }
-//        if (order.getTable() != null && order.getTable().getId() != null) {
-//            tableRepository.findById(order.getTable().getId())
-//                    .ifPresent(order::setTable);
-//        }
-//        
-//        if (order.getStatus() == null) order.setStatus("PREPARING");
-//        if (order.getPaymentStatus() == null) order.setPaymentStatus("PENDING");
-//
-//        return orderRepository.save(order);
-//    }
-    
     @Override
+    @Transactional
     public Order createOrder(Order order) {
+
         order.setInvoiceNo(InvoiceGenerator.generateInvoiceNo());
-        
-        if (order.getCreatedBy() != null && order.getCreatedBy().getId() != null) {
-            userRepository.findById(order.getCreatedBy().getId())
-                    .ifPresent(order::setCreatedBy);
+
+        Order savedOrder = orderRepository.save(order);
+
+        // LOOP ORDER ITEMS
+        for (OrderItem item : order.getOrderItems()) {
+
+            Long productId = item.getProduct().getId();
+
+            List<Recipe> recipes = recipeRepository.findByProductId(productId);
+
+            if (recipes.isEmpty()) {
+                throw new RuntimeException("No recipe found for product " + productId);
+            }
+
+            for (Recipe r : recipes) {
+
+                Inventory inv = r.getInventory();
+
+                Double neededQty = r.getQuantity() * item.getQuantity();
+
+                if (inv.getQuantity() < neededQty) {
+                    throw new RuntimeException("Insufficient stock");
+                }
+
+                inv.setQuantity(inv.getQuantity() - neededQty);
+                inventoryRepository.save(inv);
+            }
+
+            item.setOrder(savedOrder);
         }
-        
-        // Table နှင့် Combined Tables Logic
-        if (order.getTable() != null && order.getTable().getId() != null) {
-            tableRepository.findById(order.getTable().getId()).ifPresent(masterTable -> {
-                order.setTable(masterTable);
-                
-                // Master Table ID ကို အခြေခံပြီး သူ့အောက်က sub-tables တွေအားလုံးကို ရှာမယ်
-                List<TableEntity> allRelatedTables = tableRepository.findAllTablesInOrder(masterTable.getId());
-                
-                // Table Number တွေကို String အဖြစ် ပေါင်းမယ် (ဥပမာ: "T1, T2")
-                String combined = allRelatedTables.stream()
-                                                  .map(TableEntity::getTableNo)
-                                                  .collect(Collectors.joining(", "));
-                order.setCombinedTables(combined);
-            });
-        }
-        
-        if (order.getStatus() == null) order.setStatus("PREPARING");
-        if (order.getPaymentStatus() == null) order.setPaymentStatus("PENDING");
 
-        return orderRepository.save(order);
-    }
-
-    @Override
-    public Optional<Order> getOrderById(Long id) {
-        return orderRepository.findById(id);
-    }
-
-    @Override
-    public Optional<Order> getOrderByInvoiceNo(String invoiceNo) {
-        return orderRepository.findByInvoiceNo(invoiceNo);
+        return orderRepository.save(savedOrder);
     }
 
     @Override
@@ -87,23 +65,28 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<Order> getOrdersByStatus(String status) {
-        return orderRepository.findByStatus(status);
+    public Optional<Order> getById(Long id) {
+        return orderRepository.findById(id);
     }
 
     @Override
-    public Order updateOrderStatus(Long id, String status) {
-        return orderRepository.findById(id).map(order -> {
-            order.setStatus(status);
-            return orderRepository.save(order);
-        }).orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
+    public Optional<Order> getByInvoice(String invoiceNo) {
+        return orderRepository.findByInvoiceNo(invoiceNo);
     }
 
     @Override
-    public Order updatePaymentStatus(Long id, String paymentStatus) {
-        return orderRepository.findById(id).map(order -> {
-            order.setPaymentStatus(paymentStatus);
-            return orderRepository.save(order);
-        }).orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
+    public Order updateStatus(Long id, String status) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        order.setStatus(status);
+        return orderRepository.save(order);
+    }
+
+    @Override
+    public Order updatePayment(Long id, String paymentStatus) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        order.setPaymentStatus(paymentStatus);
+        return orderRepository.save(order);
     }
 }

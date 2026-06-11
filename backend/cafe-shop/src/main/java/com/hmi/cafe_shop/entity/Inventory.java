@@ -2,36 +2,36 @@ package com.hmi.cafe_shop.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "inventories")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "inventories")
 public class Inventory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "product_id", unique = true, nullable = false)
-    private Product product;
+    @Column(nullable = false)
+    private String name;
 
-    @Column(name = "quantity", nullable = false)
-    private Integer quantity = 0;
+    private String unit;
 
-    @Column(name = "low_stock_threshold")
-    private Integer lowStockThreshold = 5;
+    @Column(nullable = false)
+    private Double quantity;
 
-    @Column(name = "updated_at")
+    private Double lowStockThreshold;
+
     private LocalDateTime updatedAt;
 
-    @PreUpdate
     @PrePersist
-    protected void onUpdate() {
+    @PreUpdate
+    public void updateTime() {
         this.updatedAt = LocalDateTime.now();
     }
 }

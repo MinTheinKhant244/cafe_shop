@@ -16,31 +16,27 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Double amount;
+
+    private Double cashReceived;
+
+    private Double changeAmount;
+
+    private String method; // CASH, KPAY, CARD
+
+    private String transactionNo;
+
+    private String status; // SUCCESS, FAILED, REFUNDED
+
     @OneToOne
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    @Column(nullable = false)
-    private Double amount;
-    @Column(name = "cash_received")
-    private Double cashReceived; // Cash
-
-    @Column(name = "change_amount")
-    private Double changeAmount; // ပြန်အမ်းငွေ
-
-    @Column(nullable = false)
-    private String method; // CASH, KPAY, WAVE, CARD, etc.
-
-    @Column(name = "transaction_no")
-    private String transactionNo; 
-
-    private String status = "SUCCESS"; // SUCCESS, FAILED, REFUNDED
-
-    @Column(name = "payment_date", updatable = false)
     private LocalDateTime paymentDate;
 
     @PrePersist
-    protected void onCreate() {
+    public void prePersist() {
         this.paymentDate = LocalDateTime.now();
+        if (status == null) status = "SUCCESS";
     }
 }

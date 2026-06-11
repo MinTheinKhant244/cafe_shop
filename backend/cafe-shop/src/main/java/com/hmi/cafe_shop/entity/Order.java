@@ -4,8 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Getter
 @Setter
@@ -19,49 +20,44 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "invoice_no", unique = true, nullable = false)
     private String invoiceNo;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
     private User createdBy;
 
     @ManyToOne
-    @JoinColumn(name = "table_id")
     private TableEntity table;
-    
- // အရေးကြီး: ပေါင်းထားသော Table များအားလုံးကို သိမ်းရန်
-    // ဥပမာ: "T1, T2, T3" ဟု String အနေဖြင့် သိမ်းဆည်းမည်
-    @Column(name = "combined_tables")
+
+    // Optional: combine tables
     private String combinedTables;
 
-    @Column(name = "total_amount")
     private Double totalAmount;
 
-    @Column(name = "payment_status")
-    private String paymentStatus = "PENDING"; // PENDING, PAID, REFUNDED
+    private String status; // PREPARING, COMPLETED, CANCELLED
 
-    @Column(name = "payment_method")
+    private String paymentStatus; // PENDING, PAID
+
     private String paymentMethod; // CASH, KPAY, CARD
 
-    @Column(name = "order_source")
-    private String orderSource; // DINE_IN, TAKE_AWAY, DELIVERY
+    private String orderSource; // DINE_IN, TAKEAWAY, DELIVERY
 
-    private String status = "PREPARING"; // PREPARING, SERVED, COMPLETED, CANCELLED
-
-    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
-    
+
+    // ITEMS
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     @JsonManagedReference
     private List<OrderItem> orderItems;
-    
+
+    // PAYMENT (important)
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
     @JsonIgnore
     private Payment payment;
 
     @PrePersist
-    protected void onCreate() {
+    public void prePersist() {
         this.createdAt = LocalDateTime.now();
+
+        if (status == null) status = "PREPARING";
+        if (paymentStatus == null) paymentStatus = "PENDING";
     }
 }

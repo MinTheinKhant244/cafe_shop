@@ -1,64 +1,56 @@
 package com.hmi.cafe_shop.config;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.SecurityFilterChain;
 import com.hmi.cafe_shop.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.*;
+import java.util.List;
 
 @Configuration
+@EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .cors(cors -> {}) // Cross-Origin ခွင့်ပြုရန်
-            .csrf(csrf -> csrf.disable()) // Stateless JWT သုံးမှာမို့လို့ CSRF ကို disable လုပ်ရန်
+        return http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                
-                // PUBLIC ENDPOINTS
-                .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll() 
-                .requestMatchers("/api/categories/all", "/api/categories/active").permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/api/auth/**", "/uploads/**").permitAll()
                 .requestMatchers("/api/products/all", "/api/products/active", "/api/products/category/**").permitAll()
+                .requestMatchers("/api/categories/all", "/api/categories/active").permitAll()
                 
-                // ADMIN 
-//                .requestMatchers("/api/stock-logs/write-off/**").hasAnyRole("ADMIN")
-//                .requestMatchers("/api/stock-logs/expiring-soon").hasAnyRole("ADMIN")
+                .requestMatchers("/api/inventory/**", "/api/recipes/**", "/api/products/**", "/api/categories/**", "/api/dashboard/**", "/api/users/**").hasRole("ADMIN")
+                .requestMatchers("/api/tables/**").hasAnyRole("ADMIN", "CASHIER")
                 
-                //  Admin
-//                .requestMatchers("/api/inventory/**").hasAnyRole("ADMIN")
-                .requestMatchers("/api/products/**").hasAnyRole("ADMIN")
-                
-                // Tables
-                .requestMatchers("/api/tables/all", "/api/tables/id/**").authenticated()
-                .requestMatchers("/api/tables/merge", "/api/tables/unmerge/**").hasAnyRole("ADMIN", "CASHIER")                .requestMatchers("/api/tables/**").authenticated()
-                
-                // Stock Logs & Suppliers
-                .requestMatchers("/api/stock-logs/all", "/api/stock-logs/product/**").authenticated()
-                
-                // Orders & Order Items
-                .requestMatchers("/api/orders/**").authenticated()
-                .requestMatchers("/api/order-items/**").authenticated()
-                .requestMatchers("/api/payments/**").authenticated()
-                
-                // USER MANAGEMENT
-                .requestMatchers("/api/users/email/**").authenticated()
-                .requestMatchers("/api/users/**").hasRole("ADMIN")
-                .requestMatchers("/api/cateogries/**").hasRole("ADMIN")
-                .requestMatchers("/api/products/**").hasRole("ADMIN")
-                .requestMatchers("/api/suppliers/**").hasRole("ADMIN")
-                .requestMatchers("/api/dashboard/**").hasRole("ADMIN")
-                
+                // Authenticated Access
+                .requestMatchers("/api/orders/**", "/api/order-items/**", "/api/payments/**").authenticated()
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtAuthenticationFilter, 
-                             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .build();
+    }
 
-        return http.build();
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }

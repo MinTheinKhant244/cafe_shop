@@ -4,40 +4,54 @@ import com.hmi.cafe_shop.entity.Dashboard;
 import com.hmi.cafe_shop.repository.OrderRepository;
 import com.hmi.cafe_shop.repository.TableRepository;
 import com.hmi.cafe_shop.service.DashboardService;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class DashboardServiceImpl implements DashboardService {
 
-    @Autowired
-    private OrderRepository orderRepository;
-
-    @Autowired
-    private TableRepository tableRepository;
+    private final OrderRepository orderRepository;
+    private final TableRepository tableRepository;
 
     @Override
     public Dashboard getDashboardSummary() {
-        Dashboard summary = new Dashboard();
-        
-        // Today's Revenue
-        summary.setTotalRevenue(orderRepository.sumTotalAmountByDate(LocalDateTime.now().toLocalDate()));
 
-        Double totalAmount = orderRepository.sumTotalAmountByDate(LocalDate.now());
-        double revenue = (totalAmount != null) ? totalAmount : 0.0;
+        LocalDate today = LocalDate.now();
 
-        summary.setTotalOrders(orderRepository.count());
-        
-        summary.setActiveTables(tableRepository.countByStatus("OCCUPIED"));
-        
-        summary.setPendingOrders(orderRepository.countByStatus("PENDING"));
-        
-        return summary;
+        Double revenue = getTodayRevenue(today);
+        Long orders = getTodayOrders(today);
+        Long pending = getPendingOrders();
+
+        Dashboard d = new Dashboard();
+        d.setTotalRevenue(revenue);
+        d.setTotalOrders(orders);
+        d.setActiveTables(tableRepository.countByStatus("OCCUPIED"));
+        d.setPendingOrders(pending);
+
+        return d;
+    }
+
+    @Override
+    public Double getTodayRevenue(LocalDate date) {
+        Double revenue = orderRepository.sumTotalAmountByDate(date);
+        return (revenue == null) ? 0.0 : revenue;
+    }
+
+    @Override
+    public Long getTodayOrders(LocalDate date) {
+        // today orders count (better than total count)
+        return orderRepository.countByCreatedAtDate(date);
+    }
+
+    @Override
+    public Long getPendingOrders() {
+        return orderRepository.countByStatus("PENDING");
     }
 
     @Override

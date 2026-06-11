@@ -10,7 +10,9 @@ import styles from "../../assets/css/menuItem.module.css";
 function Category() {
   const dispatch = useDispatch();
   
+  // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
@@ -18,28 +20,44 @@ function Category() {
 
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
   const { list: categories, loading } = useSelector((state) => state.categories);
-
+ 
   useEffect(() => {
     dispatch(fetchAllCategories());
   }, [dispatch]);
 
+  // Search with debounce
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (searchTerm.trim().length > 0) dispatch(searchCategories(searchTerm));
-      else dispatch(fetchAllCategories());
+      if (searchTerm.trim().length > 0) {
+        dispatch(searchCategories(searchTerm));
+      } else {
+        dispatch(fetchAllCategories());
+      }
     }, 500);
     return () => clearTimeout(handler);
   }, [searchTerm, dispatch]);
 
+  // Filtering Logic (for status filter)
+  const filteredCategories = categories.filter((cat) => {
+    const matchesStatus = filterStatus === "all" || 
+                         (filterStatus === "active" ? cat.isActive : !cat.isActive);
+    return matchesStatus;
+  });
+
   const handleSave = async (e) => {
     e.preventDefault();
     try {
-      if (isEditing) await dispatch(updateCategory(formData)).unwrap();
-      else await dispatch(addCategory(formData)).unwrap();
+      if (isEditing) {
+        await dispatch(updateCategory(formData)).unwrap();
+      } else {
+        await dispatch(addCategory(formData)).unwrap();
+      }
       setShowModal(false);
       resetForm();
       dispatch(fetchAllCategories());
-    } catch (error) { alert("Error saving category!"); }
+    } catch (error) { 
+      alert("Error saving category!"); 
+    }
   };
 
   const resetForm = () => {
@@ -48,9 +66,15 @@ function Category() {
 
   const handleToggleActive = async (cat) => {
     try {
-      cat.isActive ? await dispatch(deactivateCategory(cat.id)).unwrap() 
-                   : await dispatch(activateCategory(cat.id)).unwrap();
-    } catch (error) { alert("Error updating status!"); }
+      if (cat.isActive) {
+        await dispatch(deactivateCategory(cat.id)).unwrap();
+      } else {
+        await dispatch(activateCategory(cat.id)).unwrap();
+      }
+      dispatch(fetchAllCategories());
+    } catch (error) { 
+      alert("Error updating status!"); 
+    }
   };
 
   // Truncate description
@@ -73,16 +97,19 @@ function Category() {
             </button>
             <h1 className={styles.pageTitle}>📁 Category Management</h1>
           </div>
-          <button className={styles.addBtn} onClick={() => { 
-            resetForm();
-            setIsEditing(false); 
-            setShowModal(true); 
-          }}>
+          <button 
+            className={styles.addBtn} 
+            onClick={() => { 
+              resetForm();
+              setIsEditing(false); 
+              setShowModal(true); 
+            }}
+          >
             + Add Category
           </button>
         </div>
 
-        {/* Search & Filter Section */}
+        {/* Search & Filter Section - Like MenuItem */}
         <div className={styles.filterSection}>
           <div className={styles.searchBox}>
             <input 
@@ -92,13 +119,20 @@ function Category() {
               onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
+          <div className={styles.filterGroup}>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">🔄 All Status</option>
+              <option value="active">✅ Active</option>
+              <option value="inactive">⛔ Inactive</option>
+            </select>
+          </div>
         </div>
 
         {/* Statistics Bar - Compact */}
         <div className={styles.statsBar}>
           <div className={styles.statCard}>
-            <span className={styles.statValue}>{categories.length}</span>
-            <span className={styles.statLabel}>Total</span>
+            <span className={styles.statValue}>{filteredCategories.length}</span>
+            <span className={styles.statLabel}>Items</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{categories.filter(c => c.isActive).length}</span>
@@ -125,14 +159,14 @@ function Category() {
                 </tr>
               </thead>
               <tbody>
-                {categories.length === 0 ? (
+                {filteredCategories.length === 0 ? (
                   <tr>
                     <td colSpan="4" className={styles.emptyRow}>
                       📭 No categories found
                     </td>
                   </tr>
                 ) : (
-                  categories.map((cat) => (
+                  filteredCategories.map((cat) => (
                     <tr key={cat.id}>
                       <td>
                         <span className={styles.productName}>

@@ -7,10 +7,9 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Dashboard {
-	
+
     private double totalRevenue;
     private long totalOrders;
     private long activeTables;
     private long pendingOrders;
-
 }
