@@ -1,7 +1,7 @@
-// Sidebar.js - အဓိက ပြင်ဆင်ချက်
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { selectUserRole, logout } from "../features/auth/authSlice";
+import { sidebarItems } from "../config/sidebarItems";
 import styles from "../assets/css/sidebar.module.css";
 import { toggleSidebar } from "../app/uiSlice";
 import { useState, useEffect } from "react";
@@ -17,13 +17,12 @@ function Sidebar() {
   const userRole = useSelector(selectUserRole);
   const normalizedRole = userRole ? userRole.toUpperCase() : "CASHIER";
 
-  // Check if mobile view
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
       
-      // ဖုန်းမုဒ်မှာ sidebar ကို ပိတ်ထားပါ
+      // Close sidebar on mobile mode
       if (mobile && isExpanded) {
         dispatch(toggleSidebar());
       }
@@ -31,7 +30,7 @@ function Sidebar() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, [dispatch]);
+  }, [dispatch, isExpanded]);
 
   // Close sidebar on mobile when clicking a link
   const handleLinkClick = () => {
@@ -48,18 +47,10 @@ function Sidebar() {
     }
   };
 
-  // ⭐ Menu Items - POS ထည့်ထားပြီးသား
-  const menuItems = [
-    { name: "POS Sales", path: "/pos", icon: "fa-cash-register", roles: ["ADMIN", "CASHIER"] },
-    { name: "Dashboard", path: "/admin/dashboard", icon: "fa-chart-line", roles: ["ADMIN"] },
-    { name: "Menu Items", path: "/admin/menu-items", icon: "fa-bowl-food", roles: ["ADMIN"] },
-    { name: "Categories", path: "/admin/categories", icon: "fa-tags", roles: ["ADMIN"] },
-    { name: "Tables", path: "/admin/tables", icon: "fa-table", roles: ["ADMIN"] },
-    { name: "Orders List", path: "/orders", icon: "fa-receipt", roles: ["ADMIN", "CASHIER"] },
-    { name: "Staffs Control", path: "/admin/staffs", icon: "fa-users", roles: ["ADMIN"] }
-  ];
-
-  const allowedMenus = menuItems.filter(item => item.roles.includes(normalizedRole));
+  // Filter menu items based on user role
+  const allowedMenus = sidebarItems.filter(item => 
+    item.roles.includes(normalizedRole)
+  );
 
   return (
     <>
@@ -84,13 +75,13 @@ function Sidebar() {
 
         {/* Menu Items */}
         <ul className={styles.sidebarMenu}>
-          {allowedMenus.map((menu) => {
-            const isActive = location.pathname === menu.path;
+          {allowedMenus.map((item) => {
+            const isActive = location.pathname === item.path;
             return (
-              <li key={menu.name} className={isActive ? styles.active : ""}>
-                <Link to={menu.path} onClick={handleLinkClick}>
-                  <i className={`fa-solid ${menu.icon}`}></i>
-                  {isExpanded && <span className={styles.menuText}>{menu.name}</span>}
+              <li key={item.title} className={isActive ? styles.active : ""}>
+                <Link to={item.path} onClick={handleLinkClick}>
+                  <i className={`fa-solid ${item.icon}`}></i>
+                  {isExpanded && <span className={styles.menuText}>{item.title}</span>}
                   {isActive && isExpanded && <span className={styles.activeIndicator}></span>}
                 </Link>
               </li>

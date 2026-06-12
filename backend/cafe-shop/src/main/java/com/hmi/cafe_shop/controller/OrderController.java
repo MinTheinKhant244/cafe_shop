@@ -1,5 +1,7 @@
 package com.hmi.cafe_shop.controller;
 
+import com.hmi.cafe_shop.dto.StockCheckRequest;
+import com.hmi.cafe_shop.dto.StockCheckResponse;
 import com.hmi.cafe_shop.entity.Order;
 import com.hmi.cafe_shop.service.OrderService;
 
@@ -20,6 +22,12 @@ public class OrderController {
     @PostMapping("/create")
     public ResponseEntity<Order> create(@RequestBody Order order) {
         return ResponseEntity.ok(orderService.createOrder(order));
+    }
+    
+    // ⭐ Stock Check API
+    @PostMapping("/check-stock")
+    public ResponseEntity<StockCheckResponse> checkStock(@RequestBody StockCheckRequest request) {
+        return ResponseEntity.ok(orderService.checkStockAvailability(request));
     }
 
     @GetMapping("/all")

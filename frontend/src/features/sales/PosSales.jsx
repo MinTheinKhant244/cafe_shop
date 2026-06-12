@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchAllProducts } from "../../features/products/productSlice";
 import { fetchAllCategories } from "../../features/categories/categorySlice";
-import { createOrder } from "../../features/orders/orderSlice";
-import { clearCart } from "./cartSlice";
+import { createOrder, updatePaymentStatus, fetchAllOrders } from "../../features/orders/orderSlice";
+import { checkCartStock, clearStockCheck, refreshAllProductCards } from "./stockCheckSlice";
+import { clearCart, updateCartItemLimit } from "./cartSlice";
 import { toggleSidebar } from "../../app/uiSlice";
-import api from "../../app/api";  // ⭐ api instance ထည့်ပါ
+import api from "../../app/api";
 import Sidebar from "../../components/Sidebar";
 import ProductCard from "../products/ProductCard";
 import CartSidebar from "./CartSidebar";
@@ -16,8 +17,10 @@ function PosSales() {
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
   const { list: products, loading: productsLoading } = useSelector((state) => state.products);
   const { list: categories } = useSelector((state) => state.categories);
-  const { items, totalAmount } = useSelector((state) => state.cart);
+  const { items, totalAmount, version: cartVersion } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth);
+  const { list: orders } = useSelector((state) => state.orders);
+  const { lastResult: stockResult, checking: stockChecking } = useSelector((state) => state.stockCheck);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,14 +31,43 @@ function PosSales() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
+  const [pendingOrders, setPendingOrders] = useState([]);
 
+  // ⭐ CRITICAL FIX: Cart changes trigger full stock check for all products
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (items.length > 0) {
+        dispatch(checkCartStock(items));
+        dispatch(refreshAllProductCards(items));
+      } else {
+        // Clear cart = trigger refresh to reset all product cards
+        dispatch(clearStockCheck());
+        dispatch(refreshAllProductCards([]));
+      }
+    }, 100); // Reduced delay for better responsiveness
+    
+    return () => clearTimeout(timer);
+  }, [items, cartVersion, dispatch]);
+
+  // Initial data loading
   useEffect(() => {
     dispatch(fetchAllProducts());
     dispatch(fetchAllCategories());
+    dispatch(fetchAllOrders());
     fetchTables();
   }, [dispatch]);
 
-  // ⭐ api instance သုံးပြီး ပြင်ထားပါ
+  // Track pending orders
+  useEffect(() => {
+    if (orders?.length) {
+      const unpaid = orders.filter(o => o.paymentStatus === "UNPAID" && o.status !== "CANCELLED");
+      setPendingOrders(unpaid);
+    }
+  }, [orders]);
+
   const fetchTables = async () => {
     try {
       const response = await api.get("/tables/all");
@@ -52,7 +84,7 @@ function PosSales() {
     return matchesCategory && matchesSearch && p.isActive;
   });
 
-  const handleCheckout = () => {
+  const handlePlaceOrder = async () => {
     if (items.length === 0) {
       alert("Please add items to cart");
       return;
@@ -61,38 +93,70 @@ function PosSales() {
       alert("Please select a table");
       return;
     }
-    setShowPaymentModal(true);
-  };
-
-  const handleConfirmOrder = async () => {
-    if (!selectedTableId) {
-      alert("Please select a table");
+    
+    if (stockResult?.available === false) {
+      setShowStockModal(true);
       return;
     }
-
+    
     setLoading(true);
-    const orderData = {
-      createdBy: { id: user?.id || 1 },
-      table: { id: selectedTableId },
-      totalAmount: totalAmount,
-      paymentMethod: paymentMethod,
-      orderSource: "DINE_IN",
-      orderItems: items.map(item => ({
-        product: { id: item.id },
-        quantity: item.quantity,
-        price: item.price
-      }))
-    };
-
+    
     try {
+      const orderData = {
+        createdBy: { id: user?.id || 1 },
+        table: { id: selectedTableId },
+        totalAmount: totalAmount,
+        paymentStatus: "UNPAID",
+        orderSource: "DINE_IN",
+        status: "PENDING",
+        orderItems: items.map(item => ({
+          product: { id: item.id },
+          quantity: item.quantity,
+          price: item.price
+        }))
+      };
+
       const result = await dispatch(createOrder(orderData)).unwrap();
       setOrderSuccess(result);
       dispatch(clearCart());
-      setShowPaymentModal(false);
+      dispatch(clearStockCheck());
       setSelectedTableId(null);
-      setCashReceived("");
+      setIsMobileCartOpen(false);
+      dispatch(fetchAllOrders());
+      
     } catch (error) {
+      console.error("Order error:", error);
       alert("Order failed: " + (error.message || "Unknown error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentForOrder = (order) => {
+    setSelectedOrderForPayment(order);
+    setPaymentMethod("CASH");
+    setCashReceived("");
+    setShowPaymentModal(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!selectedOrderForPayment) return;
+
+    setLoading(true);
+    
+    try {
+      await dispatch(updatePaymentStatus({ 
+        id: selectedOrderForPayment.id, 
+        paymentStatus: "PAID" 
+      })).unwrap();
+      
+      setShowPaymentModal(false);
+      setSelectedOrderForPayment(null);
+      setCashReceived("");
+      dispatch(fetchAllOrders());
+      alert(`Payment for ${selectedOrderForPayment.invoiceNo} completed successfully!`);
+    } catch (error) {
+      alert("Payment failed: " + (error.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -102,8 +166,15 @@ function PosSales() {
     if (paymentMethod !== "CASH" || !cashReceived) return 0;
     const received = parseFloat(cashReceived);
     if (isNaN(received)) return 0;
-    return received - totalAmount;
+    return received - (selectedOrderForPayment?.totalAmount || 0);
   };
+
+  const toggleMobileCart = () => {
+    setIsMobileCartOpen(!isMobileCartOpen);
+  };
+
+  const totalItemsInCart = items.reduce((sum, i) => sum + i.quantity, 0);
+  const hasStockIssue = stockResult?.available === false;
 
   return (
     <div className={`${styles.layout} ${isExpanded ? styles.sidebarExpanded : ""}`}>
@@ -111,10 +182,12 @@ function PosSales() {
       
       <div className={styles.mainContent}>
         <div className={styles.posHeader}>
-          <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
-            ☰
-          </button>
-          <h1 style={{background:"none",color:"black", fontSize:"18px",weight:"bold"}}>🧾 POS Sales</h1>
+          <div className={styles.headerLeft}>
+            <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
+              ☰
+            </button>
+            <h1 className={styles.pageTitle}>POS Sales</h1>
+          </div>
           <div className={styles.headerRight}>
             <select 
               className={styles.tableSelect}
@@ -126,33 +199,57 @@ function PosSales() {
                 <option key={t.id} value={t.id}>Table {t.tableNo}</option>
               ))}
             </select>
+            <button className={styles.mobileCartToggle} onClick={toggleMobileCart}>
+              🛒 ({totalItemsInCart})
+            </button>
           </div>
         </div>
 
+        {hasStockIssue && !stockChecking && (
+          <div className={styles.stockWarningBanner}>
+            <span>⚠️</span>
+            <span>Insufficient stock for {stockResult?.insufficient?.length || 0} ingredient(s)</span>
+            <button onClick={() => setShowStockModal(true)}>View Details</button>
+          </div>
+        )}
+
+        {pendingOrders.length > 0 && (
+          <div className={styles.pendingOrdersSection}>
+            <div className={styles.pendingHeader}>
+              <h3>💰 Pending Payments</h3>
+              <span>{pendingOrders.length} orders</span>
+            </div>
+            <div className={styles.pendingOrdersList}>
+              {pendingOrders.map(order => (
+                <div key={order.id} className={styles.pendingOrderCard}>
+                  <div className={styles.pendingOrderInfo}>
+                    <span className={styles.invoiceNo}>#{order.invoiceNo}</span>
+                    <span className={styles.tableNo}>Table {order.table?.tableNo}</span>
+                    <span className={styles.amount}>{order.totalAmount?.toLocaleString()} Ks</span>
+                    <span className={`${styles.status} ${styles[order.status?.toLowerCase()]}`}>
+                      {order.status}
+                    </span>
+                  </div>
+                  <button className={styles.payNowBtn} onClick={() => handlePaymentForOrder(order)}>
+                    💳 Pay Now
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className={styles.categoryBar}>
-          <button 
-            className={`${styles.categoryChip} ${!selectedCategory ? styles.active : ""}`}
-            onClick={() => setSelectedCategory("")}
-          >
+          <button className={`${styles.categoryChip} ${!selectedCategory ? styles.active : ""}`} onClick={() => setSelectedCategory("")}>
             All
           </button>
           {categories?.filter(c => c.isActive).map(cat => (
-            <button 
-              key={cat.id}
-              className={`${styles.categoryChip} ${selectedCategory === cat.id ? styles.active : ""}`}
-              onClick={() => setSelectedCategory(cat.id)}
-            >
+            <button key={cat.id} className={`${styles.categoryChip} ${selectedCategory === cat.id ? styles.active : ""}`} onClick={() => setSelectedCategory(cat.id)}>
               {cat.name}
             </button>
           ))}
           <div className={styles.searchWrapper}>
-            <input 
-              type="text" 
-              placeholder="🔍 Search menu..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={styles.searchInput}
-            />
+            <input type="text" placeholder="🔍 Search menu..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={styles.searchInput} />
           </div>
         </div>
 
@@ -165,71 +262,98 @@ function PosSales() {
               <p>No products found</p>
             </div>
           ) : (
-            filteredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))
+            filteredProducts.map(product => <ProductCard key={product.id} product={product} />)
           )}
         </div>
       </div>
 
-      <div className={styles.cartSidebar}>
-        <CartSidebar onCheckout={handleCheckout} />
+      <div className={`${styles.cartSidebar} ${isMobileCartOpen ? styles.mobileOpen : ""}`}>
+        <div className={styles.mobileCartHeader}>
+          <h3>🛒 Your Order</h3>
+          <button className={styles.closeMobileCart} onClick={toggleMobileCart}>×</button>
+        </div>
+        <CartSidebar onCheckout={handlePlaceOrder} stockResult={stockResult} stockChecking={stockChecking} />
       </div>
 
+      {isMobileCartOpen && <div className={styles.mobileOverlay} onClick={toggleMobileCart} />}
+
+      {/* Stock Issues Modal */}
+      {showStockModal && stockResult?.insufficient?.length > 0 && (
+        <div className={styles.modalOverlay} onClick={() => setShowStockModal(false)}>
+          <div className={styles.stockErrorModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 style={{ color: "#dc3545" }}>⚠️ Insufficient Stock</h3>
+              <button className={styles.modalClose} onClick={() => setShowStockModal(false)}>×</button>
+            </div>
+            <div className={styles.stockErrorContent}>
+              <p>The following ingredients are insufficient for your cart:</p>
+              <div className={styles.issuesList}>
+                {stockResult.insufficient.map((ingredient, idx) => (
+                  <div key={idx} className={styles.issueItem}>
+                    <div className={styles.issueIngredientHeader}>
+                      <span className={styles.issueIngredientName}>❌ {ingredient.name}</span>
+                      <span className={styles.issueShortfall}>
+                        Short by: {ingredient.shortfall.toFixed(2)} {ingredient.unit}
+                      </span>
+                    </div>
+                    <div className={styles.issueProducts}>
+                      {ingredient.products.map((p, pIdx) => (
+                        <div key={pIdx} className={styles.issueProductDetail}>
+                          🍽️ {p.productName} x{p.cartQuantity} → needs {p.requiredForThis.toFixed(2)} {ingredient.unit}
+                        </div>
+                      ))}
+                    </div>
+                    <div className={styles.issueSummary}>
+                      Available: {ingredient.available.toFixed(2)} {ingredient.unit} | 
+                      Required: {ingredient.required.toFixed(2)} {ingredient.unit}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className={styles.closeErrorBtn} onClick={() => setShowStockModal(false)}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payment Modal */}
-      {showPaymentModal && (
+      {showPaymentModal && selectedOrderForPayment && (
         <div className={styles.modalOverlay} onClick={() => setShowPaymentModal(false)}>
           <div className={styles.paymentModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>💳 Payment</h3>
+              <h3>💳 Payment - {selectedOrderForPayment.invoiceNo}</h3>
               <button className={styles.modalClose} onClick={() => setShowPaymentModal(false)}>×</button>
             </div>
-            
             <div className={styles.paymentContent}>
+              <div className={styles.orderInfo}>
+                <p>Table: <strong>Table {selectedOrderForPayment.table?.tableNo}</strong></p>
+                <p>Items: <strong>{selectedOrderForPayment.orderItems?.length || 0}</strong></p>
+              </div>
               <div className={styles.paymentTotal}>
                 <span>Total Amount</span>
-                <span className={styles.paymentTotalAmount}>{totalAmount?.toLocaleString()} Ks</span>
+                <span className={styles.paymentTotalAmount}>{selectedOrderForPayment.totalAmount?.toLocaleString()} Ks</span>
               </div>
-
               <div className={styles.paymentMethodGroup}>
                 <label>Payment Method</label>
                 <div className={styles.methodButtons}>
                   {["CASH", "KPAY", "WAVE", "CARD"].map(method => (
-                    <button 
-                      key={method}
-                      className={`${styles.methodBtn} ${paymentMethod === method ? styles.active : ""}`}
-                      onClick={() => setPaymentMethod(method)}
-                    >
+                    <button key={method} className={`${styles.methodBtn} ${paymentMethod === method ? styles.active : ""}`} onClick={() => setPaymentMethod(method)}>
                       {method === "CASH" ? "💵 Cash" : method === "KPAY" ? "🏦 KBZ Pay" : method === "WAVE" ? "📱 Wave Pay" : "💳 Card"}
                     </button>
                   ))}
                 </div>
               </div>
-
               {paymentMethod === "CASH" && (
                 <div className={styles.formGroup}>
                   <label>Cash Received (Ks)</label>
-                  <input 
-                    type="number" 
-                    placeholder="Enter amount received"
-                    value={cashReceived}
-                    onChange={(e) => setCashReceived(e.target.value)}
-                    className={styles.cashInput}
-                  />
-                  {cashReceived && (
-                    <div className={styles.changeAmount}>
-                      Change: {getChangeAmount().toLocaleString()} Ks
-                    </div>
-                  )}
+                  <input type="number" placeholder="Enter amount received" value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} className={styles.cashInput} />
+                  {cashReceived && <div className={styles.changeAmount}>Change: {getChangeAmount().toLocaleString()} Ks</div>}
                 </div>
               )}
-
-              <button 
-                className={styles.confirmPayBtn}
-                onClick={handleConfirmOrder}
-                disabled={loading}
-              >
-                {loading ? "Processing..." : `Confirm & Pay ${totalAmount?.toLocaleString()} Ks`}
+              <button className={styles.confirmPayBtn} onClick={handleConfirmPayment} disabled={loading}>
+                {loading ? "Processing..." : "Confirm Payment"}
               </button>
             </div>
           </div>
@@ -241,15 +365,13 @@ function PosSales() {
         <div className={styles.modalOverlay} onClick={() => setOrderSuccess(null)}>
           <div className={styles.successModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.successIcon}>✅</div>
-            <h3>Order Successful!</h3>
+            <h3>Order Placed!</h3>
             <p>Invoice: <strong>{orderSuccess.invoiceNo}</strong></p>
+            <p>Table: <strong>Table {orderSuccess.table?.tableNo}</strong></p>
             <p>Total: {orderSuccess.totalAmount?.toLocaleString()} Ks</p>
-            <button className={styles.printBtn} onClick={() => window.print()}>
-              🖨️ Print Invoice
-            </button>
-            <button className={styles.closeSuccessBtn} onClick={() => setOrderSuccess(null)}>
-              Close
-            </button>
+            <p className={styles.paymentNote}>⚠️ Payment will be collected after dining</p>
+            <button className={styles.printBtn} onClick={() => window.print()}>🖨️ Print Order</button>
+            <button className={styles.closeSuccessBtn} onClick={() => setOrderSuccess(null)}>Close</button>
           </div>
         </div>
       )}

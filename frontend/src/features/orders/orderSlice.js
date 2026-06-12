@@ -1,9 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../app/api";
 
-// =====================
-// FETCH ALL ORDERS
-// =====================
 export const fetchAllOrders = createAsyncThunk(
   "orders/fetchAll",
   async (_, thunkAPI) => {
@@ -18,9 +15,6 @@ export const fetchAllOrders = createAsyncThunk(
   }
 );
 
-// =====================
-// CREATE ORDER
-// =====================
 export const createOrder = createAsyncThunk(
   "orders/create",
   async (orderData, thunkAPI) => {
@@ -28,16 +22,35 @@ export const createOrder = createAsyncThunk(
       const response = await api.post("/orders/create", orderData);
       return response.data;
     } catch (error) {
+      // Stock error ကို သီးသန့် handle လုပ်ဖို့
+      const errorData = error.response?.data;
+      if (errorData?.stockIssues) {
+        return thunkAPI.rejectWithValue({
+          message: "Insufficient stock",
+          stockIssues: errorData.stockIssues
+        });
+      }
       return thunkAPI.rejectWithValue(
-        error.response?.data?.message || "Failed to create order"
+        errorData?.message || "Failed to create order"
       );
     }
   }
 );
 
-// =====================
-// UPDATE ORDER STATUS
-// =====================
+export const checkStockBeforeOrder = createAsyncThunk(
+  "orders/checkStock",
+  async (items, thunkAPI) => {
+    try {
+      const response = await api.post("/orders/check-stock", { items });
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to check stock"
+      );
+    }
+  }
+);
+
 export const updateOrderStatus = createAsyncThunk(
   "orders/updateStatus",
   async ({ id, status }, thunkAPI) => {
@@ -56,9 +69,6 @@ export const updateOrderStatus = createAsyncThunk(
   }
 );
 
-// =====================
-// UPDATE PAYMENT STATUS
-// =====================
 export const updatePaymentStatus = createAsyncThunk(
   "orders/updatePayment",
   async ({ id, paymentStatus }, thunkAPI) => {
@@ -77,21 +87,22 @@ export const updatePaymentStatus = createAsyncThunk(
   }
 );
 
-// =====================
-// SLICE
-// =====================
 const orderSlice = createSlice({
   name: "orders",
   initialState: {
     list: [],
     loading: false,
     actionLoading: false,
-    error: null
+    error: null,
+    stockCheck: { loading: false, issues: [], available: true } // ⭐ Stock check state
   },
 
   reducers: {
     clearOrderError: (state) => {
       state.error = null;
+    },
+    clearStockIssues: (state) => {  // ⭐ Clear stock issues
+      state.stockCheck = { loading: false, issues: [], available: true };
     }
   },
 
@@ -111,6 +122,22 @@ const orderSlice = createSlice({
         state.error = action.payload;
       })
 
+      // ================= CHECK STOCK =================
+      .addCase(checkStockBeforeOrder.pending, (state) => {
+        state.stockCheck.loading = true;
+      })
+      .addCase(checkStockBeforeOrder.fulfilled, (state, action) => {
+        state.stockCheck.loading = false;
+        state.stockCheck.available = action.payload.available;
+        state.stockCheck.issues = action.payload.issues || [];
+      })
+      .addCase(checkStockBeforeOrder.rejected, (state, action) => {
+        state.stockCheck.loading = false;
+        state.stockCheck.available = false;
+        state.stockCheck.issues = [];
+        state.error = action.payload;
+      })
+
       // ================= CREATE =================
       .addCase(createOrder.pending, (state) => {
         state.actionLoading = true;
@@ -118,10 +145,19 @@ const orderSlice = createSlice({
       .addCase(createOrder.fulfilled, (state, action) => {
         state.actionLoading = false;
         state.list.unshift(action.payload);
+        state.stockCheck = { loading: false, issues: [], available: true }; // Reset stock check
       })
       .addCase(createOrder.rejected, (state, action) => {
         state.actionLoading = false;
-        state.error = action.payload;
+        state.error = action.payload?.message || action.payload;
+        // ⭐ Stock issues ရှိရင် သိမ်းထားပါ
+        if (action.payload?.stockIssues) {
+          state.stockCheck = {
+            loading: false,
+            available: false,
+            issues: action.payload.stockIssues
+          };
+        }
       })
 
       // ================= STATUS =================
@@ -130,11 +166,9 @@ const orderSlice = createSlice({
       })
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
         state.actionLoading = false;
-
         const index = state.list.findIndex(
           (o) => o.id === action.payload.id
         );
-
         if (index !== -1) {
           state.list[index] = action.payload;
         }
@@ -150,11 +184,9 @@ const orderSlice = createSlice({
       })
       .addCase(updatePaymentStatus.fulfilled, (state, action) => {
         state.actionLoading = false;
-
         const index = state.list.findIndex(
           (o) => o.id === action.payload.id
         );
-
         if (index !== -1) {
           state.list[index] = action.payload;
         }
@@ -166,5 +198,5 @@ const orderSlice = createSlice({
   },
 });
 
-export const { clearOrderError } = orderSlice.actions;
+export const { clearOrderError, clearStockIssues } = orderSlice.actions;
 export default orderSlice.reducer;

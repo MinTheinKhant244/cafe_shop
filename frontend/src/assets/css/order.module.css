@@ -774,3 +774,47 @@
     min-width: 80px;
   }
 }
+
+/* Clear Filters Button */
+.clearFiltersBtn {
+  padding: 10px 18px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  color: #dc3545;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.clearFiltersBtn:hover {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+  transform: translateY(-1px);
+}
+
+/* Update filter group to accommodate the clear button */
+.filterGroup {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .filterGroup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .clearFiltersBtn {
+    width: 100%;
+  }
+  
+  .dateInput {
+    width: 100%;
+  }
+}

@@ -1,5 +1,6 @@
 package com.hmi.cafe_shop.service;
 
+import com.hmi.cafe_shop.dto.RecipeCostDTO;
 import com.hmi.cafe_shop.entity.Recipe;
 
 import java.util.List;
@@ -18,4 +19,14 @@ public interface RecipeService {
     void delete(Long id);
 
     List<Recipe> getByProduct(Long productId);
+    
+    List<Recipe> getByInventory(Long inventoryId);
+    
+    void deleteByProductId(Long productId);
+    
+    boolean checkIfIngredientExists(Long productId, Long inventoryId);
+    
+    Double calculateRecipeCost(Long productId);
+    RecipeCostDTO getRecipeCostDetails(Long productId);
+    Double getTotalInventoryCostForProduct(Long productId);
 }

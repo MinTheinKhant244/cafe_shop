@@ -1,5 +1,7 @@
 package com.hmi.cafe_shop.service;
 
+import com.hmi.cafe_shop.dto.StockCheckRequest;
+import com.hmi.cafe_shop.dto.StockCheckResponse;
 import com.hmi.cafe_shop.entity.Order;
 import java.util.List;
 import java.util.Optional;
@@ -7,6 +9,9 @@ import java.util.Optional;
 public interface OrderService {
 
     Order createOrder(Order order);
+    
+    // ⭐ Stock check method အသစ်
+    StockCheckResponse checkStockAvailability(StockCheckRequest request);
 
     List<Order> getAllOrders();
 

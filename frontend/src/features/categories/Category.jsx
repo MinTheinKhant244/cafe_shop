@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { toggleSidebar } from "../../app/uiSlice";
 import { 
-  fetchAllCategories, addCategory, updateCategory, deactivateCategory, activateCategory, searchCategories
+  fetchAllCategories, addCategory, updateCategory, deactivateCategory, activateCategory, searchCategories, clearError
 } from "./categorySlice";
 import Sidebar from "../../components/Sidebar";
 import styles from "../../assets/css/menuItem.module.css";
@@ -17,13 +17,28 @@ function Category() {
   const [isEditing, setIsEditing] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
   const [formData, setFormData] = useState({ id: null, name: "", description: "", isActive: true });
+  const [notification, setNotification] = useState({ show: false, message: "", type: "" });
 
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
-  const { list: categories, loading } = useSelector((state) => state.categories);
+  const { list: categories, loading, error: reduxError } = useSelector((state) => state.categories);
  
   useEffect(() => {
     dispatch(fetchAllCategories());
   }, [dispatch]);
+
+  // Show notification helper
+  const showNotification = (message, type = "success") => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => setNotification({ show: false, message: "", type: "" }), 3000);
+  };
+
+  // Show redux error as notification
+  useEffect(() => {
+    if (reduxError) {
+      showNotification(reduxError, "error");
+      dispatch(clearError());
+    }
+  }, [reduxError, dispatch]);
 
   // Search with debounce
   useEffect(() => {
@@ -44,19 +59,34 @@ function Category() {
     return matchesStatus;
   });
 
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterStatus("all");
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!formData.name.trim()) {
+      showNotification("Category name is required!", "error");
+      return;
+    }
+    
     try {
       if (isEditing) {
         await dispatch(updateCategory(formData)).unwrap();
+        showNotification("Category updated successfully!", "success");
       } else {
         await dispatch(addCategory(formData)).unwrap();
+        showNotification("Category added successfully!", "success");
       }
       setShowModal(false);
       resetForm();
       dispatch(fetchAllCategories());
     } catch (error) { 
-      alert("Error saving category!"); 
+      showNotification(error || "Error saving category!", "error");
     }
   };
 
@@ -68,12 +98,14 @@ function Category() {
     try {
       if (cat.isActive) {
         await dispatch(deactivateCategory(cat.id)).unwrap();
+        showNotification(`Category "${cat.name}" deactivated!`, "success");
       } else {
         await dispatch(activateCategory(cat.id)).unwrap();
+        showNotification(`Category "${cat.name}" activated!`, "success");
       }
       dispatch(fetchAllCategories());
     } catch (error) { 
-      alert("Error updating status!"); 
+      showNotification(error || "Error updating status!", "error");
     }
   };
 
@@ -84,18 +116,29 @@ function Category() {
     return desc.substring(0, maxLength) + "...";
   };
 
+  // Check if any filter is active
+  const isFilterActive = searchTerm !== "" || filterStatus !== "all";
+
   return (
     <div className={`${styles.layout} ${isExpanded ? styles.sidebarExpanded : ""}`}>
       <Sidebar />
       <div className={styles.mainContent}>
         
+        {/* Notification Toast */}
+        {notification.show && (
+          <div className={`${styles.toast} ${notification.type === "success" ? styles.success : styles.error}`}>
+            {notification.type === "success" ? "✅ " : "❌ "}
+            {notification.message}
+          </div>
+        )}
+
         {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
               ☰
             </button>
-            <h1 className={styles.pageTitle}>📁 Category Management</h1>
+            <h1 className={styles.pageTitle}>Category Management</h1>
           </div>
           <button 
             className={styles.addBtn} 
@@ -125,6 +168,11 @@ function Category() {
               <option value="active">✅ Active</option>
               <option value="inactive">⛔ Inactive</option>
             </select>
+            {isFilterActive && (
+              <button className={styles.clearFiltersBtn} onClick={clearFilters}>
+                ✕ Clear Filters
+              </button>
+            )}
           </div>
         </div>
 
@@ -132,7 +180,7 @@ function Category() {
         <div className={styles.statsBar}>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{filteredCategories.length}</span>
-            <span className={styles.statLabel}>Items</span>
+            <span className={styles.statLabel}>Filtered</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{categories.filter(c => c.isActive).length}</span>
@@ -142,12 +190,25 @@ function Category() {
             <span className={styles.statValue}>{categories.filter(c => !c.isActive).length}</span>
             <span className={styles.statLabel}>Inactive</span>
           </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{categories.length}</span>
+            <span className={styles.statLabel}>Total</span>
+          </div>
         </div>
 
         {/* Table */}
         <div className={styles.tableContainer}>
           {loading ? (
-            <div className={styles.loading}>Loading...</div>
+            <div className={styles.loading}>Loading categories...</div>
+          ) : filteredCategories.length === 0 ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyIcon}>📭</span>
+              <p>
+                {searchTerm || filterStatus !== "all" 
+                  ? "No categories match your filters" 
+                  : "No categories found. Click 'Add Category' to create one."}
+              </p>
+            </div>
           ) : (
             <table className={styles.adminTable}>
               <thead>
@@ -159,62 +220,54 @@ function Category() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCategories.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className={styles.emptyRow}>
-                      📭 No categories found
+                {filteredCategories.map((cat) => (
+                  <tr key={cat.id}>
+                    <td>
+                      <span className={styles.productName}>
+                        {cat.name}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={styles.descriptionText}>
+                        {truncateDesc(cat.description)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`${styles.statusBadge} ${cat.isActive ? styles.statusActive : styles.statusInactive}`}>
+                        {cat.isActive ? "🟢 Active" : "🔴 Inactive"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className={styles.actionButtons}>
+                        <button 
+                          className={styles.viewBtn} 
+                          onClick={() => setDetailItem(cat)} 
+                          title="View Details"
+                        >
+                          👁️
+                        </button>
+                        <button 
+                          className={styles.editBtn} 
+                          onClick={() => { 
+                            setFormData(cat); 
+                            setIsEditing(true); 
+                            setShowModal(true); 
+                          }} 
+                          title="Edit Category"
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          className={cat.isActive ? styles.deactivateBtn : styles.activateBtn} 
+                          onClick={() => handleToggleActive(cat)}
+                          title={cat.isActive ? "Deactivate Category" : "Activate Category"}
+                        >
+                          {cat.isActive ? "🔴" : "🟢"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  filteredCategories.map((cat) => (
-                    <tr key={cat.id}>
-                      <td>
-                        <span className={styles.productName}>
-                          {cat.name}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={styles.descriptionText}>
-                          {truncateDesc(cat.description)}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`${styles.statusBadge} ${cat.isActive ? styles.statusActive : styles.statusInactive}`}>
-                          {cat.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className={styles.actionButtons}>
-                          <button 
-                            className={styles.viewBtn} 
-                            onClick={() => setDetailItem(cat)} 
-                            title="View"
-                          >
-                            👁️
-                          </button>
-                          <button 
-                            className={styles.editBtn} 
-                            onClick={() => { 
-                              setFormData(cat); 
-                              setIsEditing(true); 
-                              setShowModal(true); 
-                            }} 
-                            title="Edit"
-                          >
-                            ✏️
-                          </button>
-                          <button 
-                            className={cat.isActive ? styles.deactivateBtn : styles.activateBtn} 
-                            onClick={() => handleToggleActive(cat)}
-                            title={cat.isActive ? "Deactivate" : "Activate"}
-                          >
-                            {cat.isActive ? "🔴" : "🟢"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           )}
@@ -244,14 +297,17 @@ function Category() {
                 <label>Description</label>
                 <textarea 
                   rows="3"
-                  placeholder="Enter category description..."
+                  placeholder="Enter category description (optional)..."
                   value={formData.description} 
                   onChange={e => setFormData({...formData, description: e.target.value})} 
                 />
+                <small className={styles.hintText}>Max 200 characters</small>
               </div>
               <div className={styles.modalFooter}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className={styles.saveBtn}>Save Changes</button>
+                <button type="submit" className={styles.saveBtn}>
+                  {isEditing ? "Update Category" : "Add Category"}
+                </button>
               </div>
             </form>
           </div>
@@ -268,14 +324,18 @@ function Category() {
             </div>
             <div className={styles.detailContent}>
               <div className={styles.detailInfo}>
-                <p><strong>Name:</strong> {detailItem.name}</p>
-                <p><strong>Description:</strong> {detailItem.description || "No description"}</p>
-                <p><strong>Status:</strong> 
+                <p><strong>📛 Name:</strong> {detailItem.name}</p>
+                <p><strong>📝 Description:</strong> {detailItem.description || "No description provided"}</p>
+                <p><strong>📊 Status:</strong> 
                   <span className={`${styles.statusBadge} ${detailItem.isActive ? styles.statusActive : styles.statusInactive}`}>
-                    {detailItem.isActive ? "Active" : "Inactive"}
+                    {detailItem.isActive ? "🟢 Active" : "🔴 Inactive"}
                   </span>
                 </p>
+                <p><strong>🆔 ID:</strong> #{detailItem.id}</p>
               </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.closeBtn} onClick={() => setDetailItem(null)}>Close</button>
             </div>
           </div>
         </div>

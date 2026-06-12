@@ -28,6 +28,14 @@ function Order() {
     return matchesSearch && matchesDate && matchesStatus && matchesPayment;
   });
 
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterDate("");
+    setFilterStatus("all");
+    setFilterPayment("all");
+  };
+
   const handleStatusChange = async (id, status) => {
     try {
       await dispatch(updateOrderStatus({ id, status })).unwrap();
@@ -61,6 +69,9 @@ function Order() {
     return <span className={`${styles.paymentBadge} ${p.class}`}>{p.icon} {p.text}</span>;
   };
 
+  // Check if any filter is active
+  const isFilterActive = searchTerm !== "" || filterDate !== "" || filterStatus !== "all" || filterPayment !== "all";
+
   return (
     <div className={`${styles.layout} ${isExpanded ? styles.sidebarExpanded : ""}`}>
       <Sidebar />
@@ -72,7 +83,7 @@ function Order() {
             <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
               ☰
             </button>
-            <h1 className={styles.pageTitle}>📋 Order Management</h1>
+            <h1 className={styles.pageTitle}>Order Management</h1>
           </div>
           <div className={styles.statsSummary}>
             <div className={styles.statSummaryItem}>
@@ -140,6 +151,11 @@ function Order() {
               <option value="UNPAID">❌ Unpaid</option>
               <option value="PAID">💰 Paid</option>
             </select>
+            {isFilterActive && (
+              <button className={styles.clearFiltersBtn} onClick={clearFilters}>
+                ✕ Clear Filters
+              </button>
+            )}
           </div>
         </div>
 

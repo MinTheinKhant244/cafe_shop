@@ -1,5 +1,7 @@
 package com.hmi.cafe_shop.serviceImpl;
 
+import com.hmi.cafe_shop.dto.StockCheckRequest;
+import com.hmi.cafe_shop.dto.StockCheckResponse;
 import com.hmi.cafe_shop.entity.*;
 import com.hmi.cafe_shop.repository.*;
 import com.hmi.cafe_shop.service.OrderService;
@@ -9,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,42 +23,87 @@ public class OrderServiceImpl implements OrderService {
     private final RecipeRepository recipeRepository;
     private final InventoryRepository inventoryRepository;
 
+    // ⭐ Stock Check Implementation
+    @Override
+    public StockCheckResponse checkStockAvailability(StockCheckRequest request) {
+        List<StockCheckResponse.StockIssue> issues = new ArrayList<>();
+        
+        for (StockCheckRequest.OrderItemDto item : request.getItems()) {
+            Long productId = item.getProduct().getId();
+            String productName = item.getProduct().getName();
+            Integer quantity = item.getQuantity();
+            
+            List<Recipe> recipes = recipeRepository.findByProductId(productId);
+            
+            for (Recipe recipe : recipes) {
+                Inventory inventory = recipe.getInventory();
+                Double requiredQty = recipe.getQuantity() * quantity;
+                Double availableQty = inventory.getQuantity();
+                
+                if (availableQty < requiredQty) {
+                    issues.add(new StockCheckResponse.StockIssue(
+                        productName,
+                        inventory.getName(),
+                        availableQty,
+                        requiredQty
+                    ));
+                }
+            }
+        }
+        
+        if (!issues.isEmpty()) {
+            return new StockCheckResponse(false, issues);
+        }
+        
+        return new StockCheckResponse(true, new ArrayList<>());
+    }
+
     @Override
     @Transactional
     public Order createOrder(Order order) {
-
-        order.setInvoiceNo(InvoiceGenerator.generateInvoiceNo());
-
-        Order savedOrder = orderRepository.save(order);
-
-        // LOOP ORDER ITEMS
+        // 1. Stock ကို အရင်စစ်ဆေးပါ
         for (OrderItem item : order.getOrderItems()) {
-
             Long productId = item.getProduct().getId();
-
             List<Recipe> recipes = recipeRepository.findByProductId(productId);
-
-            if (recipes.isEmpty()) {
-                throw new RuntimeException("No recipe found for product " + productId);
-            }
-
-            for (Recipe r : recipes) {
-
-                Inventory inv = r.getInventory();
-
-                Double neededQty = r.getQuantity() * item.getQuantity();
-
+            
+            for (Recipe recipe : recipes) {
+                Inventory inv = recipe.getInventory();
+                Double neededQty = recipe.getQuantity() * item.getQuantity();
+                
                 if (inv.getQuantity() < neededQty) {
-                    throw new RuntimeException("Insufficient stock");
+                    throw new RuntimeException("Insufficient stock for " + inv.getName() + 
+                        ". Available: " + inv.getQuantity() + ", Required: " + neededQty);
                 }
-
+            }
+        }
+        
+        // 2. Generate Invoice Number
+        order.setInvoiceNo(InvoiceGenerator.generateInvoiceNo());
+        
+        // 3. Save Order first to get ID
+        Order savedOrder = orderRepository.save(order);
+        
+        // 4. Process Order Items and Deduct Stock
+        for (OrderItem item : savedOrder.getOrderItems()) {
+            Long productId = item.getProduct().getId();
+            List<Recipe> recipes = recipeRepository.findByProductId(productId);
+            
+            for (Recipe recipe : recipes) {
+                Inventory inv = recipe.getInventory();
+                Double neededQty = recipe.getQuantity() * item.getQuantity();
+                
+                // Deduct stock
                 inv.setQuantity(inv.getQuantity() - neededQty);
                 inventoryRepository.save(inv);
+                
+                // Optional: Create stock transaction log
+                // stockTransactionRepository.save(createTransaction(inv, -neededQty, savedOrder));
             }
-
+            
             item.setOrder(savedOrder);
         }
-
+        
+        // 5. Save updated order with items
         return orderRepository.save(savedOrder);
     }
 

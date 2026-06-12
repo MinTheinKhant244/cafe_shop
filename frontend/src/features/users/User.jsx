@@ -39,6 +39,13 @@ function User() {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm("");
+    setFilterRole("all");
+    setFilterStatus("all");
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     const payload = { ...formData };
@@ -79,7 +86,7 @@ function User() {
           <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
             ☰
           </button>
-            <h1 className={styles.pageTitle}>👥 Staff Management</h1>
+            <h1 className={styles.pageTitle}>Staff Management</h1>
           </div>
           <button className={styles.addBtn} onClick={() => { 
             resetForm(); 
@@ -135,6 +142,11 @@ function User() {
               <option value="active">✅ Active</option>
               <option value="inactive">⛔ Inactive</option>
             </select>
+            {(searchTerm || filterRole !== "all" || filterStatus !== "all") && (
+              <button className={styles.clearFiltersBtn} onClick={clearFilters}>
+                ✕ Clear Filters
+              </button>
+            )}
           </div>
         </div>
 

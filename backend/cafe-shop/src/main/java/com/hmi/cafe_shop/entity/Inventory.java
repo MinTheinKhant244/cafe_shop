@@ -1,9 +1,14 @@
+// Inventory.java - Add price fields
 package com.hmi.cafe_shop.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.hmi.cafe_shop.dto.InventoryPriceHistory;
+import com.hmi.cafe_shop.dto.InventoryTransaction;
 
 @Entity
 @Table(name = "inventories")
@@ -17,21 +22,46 @@ public class Inventory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100, unique = true)
     private String name;
 
+    @Column(length = 20)
     private String unit;
 
     @Column(nullable = false)
     private Double quantity;
 
     private Double lowStockThreshold;
+    
+    // ✅ Add price fields
+    @Column(nullable = false)
+    private Double currentPrice = 0.0; // လက်ရှိဝယ်ယူဈေး
+    
+    @Column(nullable = false)
+    private String status = "ACTIVE"; // ACTIVE, DISCONTINUED
 
     private LocalDateTime updatedAt;
+    private LocalDateTime createdAt;
+    
+    // Add relationships
+    @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<InventoryTransaction> transactions = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<InventoryPriceHistory> priceHistories = new ArrayList<>();
 
     @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        if (this.quantity == null) this.quantity = 0.0;
+        if (this.lowStockThreshold == null) this.lowStockThreshold = 10.0;
+        if (this.currentPrice == null) this.currentPrice = 0.0;
+        if (this.status == null) this.status = "ACTIVE";
+    }
+
     @PreUpdate
-    public void updateTime() {
+    protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
 }

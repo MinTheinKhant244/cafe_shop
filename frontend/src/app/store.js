@@ -9,6 +9,9 @@ import tableReducer from "../features/tables/tableSlice"
 import categoryReducer from "../features/categories/categorySlice"
 import uiReducer from './uiSlice';
 import cartReducer from "../features/sales/cartSlice";
+import inventoryReducer from "../features/inventories/inventorySlice"
+import recipeReducer from "../features/recipes/recipeSlice"
+import stockCheckReducer from '../features/sales/stockCheckSlice';
 
 
 const store = configureStore({
@@ -22,6 +25,9 @@ const store = configureStore({
         tables: tableReducer,
         dashboard: dashboardReducer,
         cart: cartReducer,  // ⭐ ဒီလိုင်းထည့်ပါ
+        inventory: inventoryReducer,
+        recipes: recipeReducer,
+        stockCheck: stockCheckReducer,
     }
 })
 

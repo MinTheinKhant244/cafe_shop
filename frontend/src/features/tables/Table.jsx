@@ -9,6 +9,7 @@ import {
   setMaster,
   removeMaster,
   clearError,
+  deleteTable,
 } from "../../features/tables/tableSlice";
 import { toggleSidebar } from "../../app/uiSlice";
 import Sidebar from "../../components/Sidebar";
@@ -23,12 +24,19 @@ function Table() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
+  const [tableToDelete, setTableToDelete] = useState(null);
   const [tableNo, setTableNo] = useState("");
   const [error, setError] = useState("");
   const [selectedSubTableId, setSelectedSubTableId] = useState(null);
   const [selectedMasterTableId, setSelectedMasterTableId] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: "", type: "" });
+  
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
 
   // Fetch all tables on component mount
   useEffect(() => {
@@ -60,11 +68,11 @@ function Table() {
 
   // Clear error when modals close
   useEffect(() => {
-    if (!showAddModal && !showMergeModal) {
+    if (!showAddModal && !showMergeModal && !showDeleteConfirmModal) {
       setError("");
       dispatch(clearError());
     }
-  }, [showAddModal, showMergeModal, dispatch]);
+  }, [showAddModal, showMergeModal, showDeleteConfirmModal, dispatch]);
 
   // Show redux error as notification
   useEffect(() => {
@@ -115,6 +123,38 @@ function Table() {
     }
   };
 
+  // Delete table
+  const handleDeleteClick = (table) => {
+    // Check if table is a master with sub tables
+    if (isMasterTable(table) && table.subTables && table.subTables.length > 0) {
+      showNotification(`Cannot delete master table "${table.tableNo}" because it has ${table.subTables.length} sub table(s). Please unmerge all sub tables first.`, "error");
+      return;
+    }
+    
+    // Check if table is a sub table
+    if (table.parentTableId && table.parentTableId !== 0) {
+      showNotification(`Cannot delete sub table "${table.tableNo}". Please unmerge it from its master table first.`, "error");
+      return;
+    }
+    
+    setTableToDelete(table);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!tableToDelete) return;
+    
+    try {
+      await dispatch(deleteTable(tableToDelete.id)).unwrap();
+      setShowDeleteConfirmModal(false);
+      setTableToDelete(null);
+      showNotification(`Table "${tableToDelete.tableNo}" deleted successfully!`, "success");
+      dispatch(fetchAllTables());
+    } catch (err) {
+      showNotification(err || "Failed to delete table", "error");
+    }
+  };
+
   // Get status icon
   const getStatusIcon = (status) => {
     return status === "AVAILABLE" ? "🟢" : "🔴";
@@ -143,6 +183,28 @@ function Table() {
   // Check if table can be modified (not a sub table)
   const canModify = (table) => {
     return !table.parentTableId || table.parentTableId === null || table.parentTableId === 0;
+  };
+
+  // Filter tables based on search term, status, and type
+  const getFilteredTables = () => {
+    if (!tables) return [];
+    
+    return tables.filter(table => {
+      // Search by table number/name
+      const matchesSearch = table.tableNo.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filter by status
+      const matchesStatus = statusFilter === "ALL" || table.status === statusFilter;
+      
+      // Filter by type
+      let matchesType = true;
+      if (typeFilter !== "ALL") {
+        const tableType = getTableType(table);
+        matchesType = tableType === typeFilter;
+      }
+      
+      return matchesSearch && matchesStatus && matchesType;
+    });
   };
 
   // FIXED: Change table status (Occupy/Release) - Master will update all sub tables
@@ -245,6 +307,8 @@ function Table() {
     }
   };
 
+  const filteredTables = getFilteredTables();
+
   return (
     <div className={`${styles.layout} ${isExpanded ? styles.sidebarExpanded : ""}`}>
       <Sidebar />
@@ -264,7 +328,7 @@ function Table() {
             <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
               ☰
             </button>
-            <h1 className={styles.pageTitle}>🪑 Table Management</h1>
+            <h1 className={styles.pageTitle}>Table Management</h1>
           </div>
           <button className={styles.addBtn} onClick={() => setShowAddModal(true)}>
             + Add New Table
@@ -274,8 +338,8 @@ function Table() {
         {/* Statistics Bar */}
         <div className={styles.statsBar}>
           <div className={styles.statCard}>
-            <span className={styles.statValue}>{tables?.length || 0}</span>
-            <span className={styles.statLabel}>Total Tables</span>
+            <span className={styles.statValue}>{filteredTables?.length || 0}</span>
+            <span className={styles.statLabel}>Filtered Tables</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{tables?.filter(t => t.status === "AVAILABLE").length || 0}</span>
@@ -291,31 +355,104 @@ function Table() {
           </div>
         </div>
 
+        {/* Search and Filter Bar */}
+        <div className={styles.filterBar}>
+          <div className={styles.searchBox}>
+            <input
+              type="text"
+              placeholder="🔍 Search by table name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles.searchInput}
+            />
+          </div>
+          
+          <div className={styles.filterGroup}>
+            <label className={styles.filterLabel}>Status:</label>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className={styles.filterSelect}
+            >
+              <option value="ALL">All Status</option>
+              <option value="AVAILABLE">🟢 Available</option>
+              <option value="OCCUPIED">🔴 Occupied</option>
+            </select>
+          </div>
+
+          <div className={styles.filterGroup}>
+            <label className={styles.filterLabel}>Type:</label>
+            <select 
+              value={typeFilter} 
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className={styles.filterSelect}
+            >
+              <option value="ALL">All Types</option>
+              <option value="MASTER">👑 Master</option>
+              <option value="NORMAL">📋 Normal</option>
+              <option value="SUB">🔗 Sub</option>
+            </select>
+          </div>
+
+          {(searchTerm || statusFilter !== "ALL" || typeFilter !== "ALL") && (
+            <button 
+              className={styles.clearFiltersBtn}
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("ALL");
+                setTypeFilter("ALL");
+              }}
+            >
+              ✕ Clear Filters
+            </button>
+          )}
+        </div>
+
         {/* Table Grid */}
         <div className={styles.tableContainer}>
           {loading ? (
             <div className={styles.loading}>Loading tables...</div>
-          ) : tables?.length === 0 ? (
+          ) : filteredTables?.length === 0 ? (
             <div className={styles.emptyState}>
               <div className={styles.emptyStateIcon}>🪑</div>
-              <div className={styles.emptyStateText}>No tables found. Click "Add New Table" to create one.</div>
+              <div className={styles.emptyStateText}>
+                {tables?.length === 0 
+                  ? 'No tables found. Click "Add New Table" to create one.'
+                  : 'No tables match your filters. Try changing your search criteria.'}
+              </div>
             </div>
           ) : (
             <div className={styles.tableGrid}>
-              {tables?.map((t) => (
+              {filteredTables?.map((t) => (
                 <div key={t.id} className={styles.tableCard} data-status={t.status}>
                   <div className={styles.tableHeader}>
                     <span className={styles.tableNumber}>{t.tableNo}</span>
-                    <button 
-                      className={styles.detailBtn} 
-                      onClick={() => {
-                        setSelectedTable(t);
-                        setShowDetailModal(true);
-                      }}
-                      title="View Details"
-                    >
-                      👁️
-                    </button>
+                    <div className={styles.headerButtons}>
+                      <button 
+                        className={styles.detailBtn} 
+                        onClick={() => {
+                          setSelectedTable(t);
+                          setShowDetailModal(true);
+                        }}
+                        title="View Details"
+                      >
+                        👁️
+                      </button>
+                      <button 
+                        className={styles.deleteBtn} 
+                        onClick={() => handleDeleteClick(t)}
+                        disabled={operationLoading || (isMasterTable(t) && t.subTables?.length > 0) || (t.parentTableId && t.parentTableId !== 0)}
+                        title={
+                          (isMasterTable(t) && t.subTables?.length > 0) 
+                            ? "Cannot delete master table with sub tables. Unmerge sub tables first."
+                            : (t.parentTableId && t.parentTableId !== 0)
+                            ? "Cannot delete sub table. Unmerge from master first."
+                            : "Delete table"
+                        }
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                   
                   <div className={styles.tableBody}>
@@ -480,6 +617,35 @@ function Table() {
                 disabled={tables?.filter(t => isMasterTable(t) && t.id !== selectedSubTableId).length === 0 || operationLoading}
               >
                 {operationLoading ? "Merging..." : "Confirm Merge"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmModal && tableToDelete && (
+        <div className={styles.modalOverlay} onClick={() => setShowDeleteConfirmModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>🗑️ Confirm Delete</h3>
+              <button className={styles.modalClose} onClick={() => setShowDeleteConfirmModal(false)}>×</button>
+            </div>
+            <div className={styles.deleteConfirmContent}>
+              <div className={styles.warningIcon}>⚠️</div>
+              <p>Are you sure you want to delete <strong>"{tableToDelete.tableNo}"</strong>?</p>
+              <p className={styles.warningText}>This action cannot be undone!</p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.cancelBtn} onClick={() => setShowDeleteConfirmModal(false)}>
+                Cancel
+              </button>
+              <button 
+                className={styles.deleteConfirmBtn} 
+                onClick={handleConfirmDelete}
+                disabled={operationLoading}
+              >
+                {operationLoading ? "Deleting..." : "Yes, Delete"}
               </button>
             </div>
           </div>

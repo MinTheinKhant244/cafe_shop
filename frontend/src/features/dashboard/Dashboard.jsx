@@ -55,7 +55,7 @@ function Dashboard() {
               ☰
             </button>
             <div>
-              <h1 className={styles.pageTitle}>📊 Dashboard</h1>
+              <h1 className={styles.pageTitle}>Dashboard</h1>
               <p className={styles.pageSubtitle}>Welcome back! Here's what's happening with your restaurant today.</p>
             </div>
           </div>
