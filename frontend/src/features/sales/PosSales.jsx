@@ -3,13 +3,12 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchAllProducts } from "../../features/products/productSlice";
 import { fetchAllCategories } from "../../features/categories/categorySlice";
 import { createOrder, updatePaymentStatus, fetchAllOrders } from "../../features/orders/orderSlice";
-import { checkCartStock, clearStockCheck, refreshAllProductCards } from "./stockCheckSlice";
-import { clearCart, updateCartItemLimit } from "./cartSlice";
+import { clearCart } from "../carts/cartSlice";
 import { toggleSidebar } from "../../app/uiSlice";
 import api from "../../app/api";
 import Sidebar from "../../components/Sidebar";
 import ProductCard from "../products/ProductCard";
-import CartSidebar from "./CartSidebar";
+import Cart from "../carts/Cart";
 import styles from "../../assets/css/posSales.module.css";
 
 function PosSales() {
@@ -17,10 +16,9 @@ function PosSales() {
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
   const { list: products, loading: productsLoading } = useSelector((state) => state.products);
   const { list: categories } = useSelector((state) => state.categories);
-  const { items, totalAmount, version: cartVersion } = useSelector((state) => state.cart);
+  const { items, totalAmount } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth);
-  const { list: orders } = useSelector((state) => state.orders);
-  const { lastResult: stockResult, checking: stockChecking } = useSelector((state) => state.stockCheck);
+  const { list: orders, actionLoading } = useSelector((state) => state.orders);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,26 +29,9 @@ function PosSales() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showStockModal, setShowStockModal] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
   const [pendingOrders, setPendingOrders] = useState([]);
-
-  // ⭐ CRITICAL FIX: Cart changes trigger full stock check for all products
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (items.length > 0) {
-        dispatch(checkCartStock(items));
-        dispatch(refreshAllProductCards(items));
-      } else {
-        // Clear cart = trigger refresh to reset all product cards
-        dispatch(clearStockCheck());
-        dispatch(refreshAllProductCards([]));
-      }
-    }, 100); // Reduced delay for better responsiveness
-    
-    return () => clearTimeout(timer);
-  }, [items, cartVersion, dispatch]);
 
   // Initial data loading
   useEffect(() => {
@@ -94,11 +75,6 @@ function PosSales() {
       return;
     }
     
-    if (stockResult?.available === false) {
-      setShowStockModal(true);
-      return;
-    }
-    
     setLoading(true);
     
     try {
@@ -119,14 +95,13 @@ function PosSales() {
       const result = await dispatch(createOrder(orderData)).unwrap();
       setOrderSuccess(result);
       dispatch(clearCart());
-      dispatch(clearStockCheck());
       setSelectedTableId(null);
       setIsMobileCartOpen(false);
       dispatch(fetchAllOrders());
       
     } catch (error) {
       console.error("Order error:", error);
-      alert("Order failed: " + (error.message || "Unknown error"));
+      alert("Order failed: " + (error?.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -156,7 +131,7 @@ function PosSales() {
       dispatch(fetchAllOrders());
       alert(`Payment for ${selectedOrderForPayment.invoiceNo} completed successfully!`);
     } catch (error) {
-      alert("Payment failed: " + (error.message || "Unknown error"));
+      alert("Payment failed: " + (error?.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -174,7 +149,6 @@ function PosSales() {
   };
 
   const totalItemsInCart = items.reduce((sum, i) => sum + i.quantity, 0);
-  const hasStockIssue = stockResult?.available === false;
 
   return (
     <div className={`${styles.layout} ${isExpanded ? styles.sidebarExpanded : ""}`}>
@@ -205,14 +179,6 @@ function PosSales() {
           </div>
         </div>
 
-        {hasStockIssue && !stockChecking && (
-          <div className={styles.stockWarningBanner}>
-            <span>⚠️</span>
-            <span>Insufficient stock for {stockResult?.insufficient?.length || 0} ingredient(s)</span>
-            <button onClick={() => setShowStockModal(true)}>View Details</button>
-          </div>
-        )}
-
         {pendingOrders.length > 0 && (
           <div className={styles.pendingOrdersSection}>
             <div className={styles.pendingHeader}>
@@ -240,16 +206,29 @@ function PosSales() {
         )}
 
         <div className={styles.categoryBar}>
-          <button className={`${styles.categoryChip} ${!selectedCategory ? styles.active : ""}`} onClick={() => setSelectedCategory("")}>
+          <button 
+            className={`${styles.categoryChip} ${!selectedCategory ? styles.active : ""}`} 
+            onClick={() => setSelectedCategory("")}
+          >
             All
           </button>
           {categories?.filter(c => c.isActive).map(cat => (
-            <button key={cat.id} className={`${styles.categoryChip} ${selectedCategory === cat.id ? styles.active : ""}`} onClick={() => setSelectedCategory(cat.id)}>
+            <button 
+              key={cat.id} 
+              className={`${styles.categoryChip} ${selectedCategory === cat.id ? styles.active : ""}`} 
+              onClick={() => setSelectedCategory(cat.id)}
+            >
               {cat.name}
             </button>
           ))}
           <div className={styles.searchWrapper}>
-            <input type="text" placeholder="🔍 Search menu..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={styles.searchInput} />
+            <input 
+              type="text" 
+              placeholder="🔍 Search menu..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className={styles.searchInput} 
+            />
           </div>
         </div>
 
@@ -267,56 +246,18 @@ function PosSales() {
         </div>
       </div>
 
-      <div className={`${styles.cartSidebar} ${isMobileCartOpen ? styles.mobileOpen : ""}`}>
+      <div className={`${styles.Cart} ${isMobileCartOpen ? styles.mobileOpen : ""}`}>
         <div className={styles.mobileCartHeader}>
           <h3>🛒 Your Order</h3>
           <button className={styles.closeMobileCart} onClick={toggleMobileCart}>×</button>
         </div>
-        <CartSidebar onCheckout={handlePlaceOrder} stockResult={stockResult} stockChecking={stockChecking} />
+        <Cart onOrderSuccess={(order) => {
+          setOrderSuccess(order);
+          setIsMobileCartOpen(false);
+        }} />
       </div>
 
       {isMobileCartOpen && <div className={styles.mobileOverlay} onClick={toggleMobileCart} />}
-
-      {/* Stock Issues Modal */}
-      {showStockModal && stockResult?.insufficient?.length > 0 && (
-        <div className={styles.modalOverlay} onClick={() => setShowStockModal(false)}>
-          <div className={styles.stockErrorModal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3 style={{ color: "#dc3545" }}>⚠️ Insufficient Stock</h3>
-              <button className={styles.modalClose} onClick={() => setShowStockModal(false)}>×</button>
-            </div>
-            <div className={styles.stockErrorContent}>
-              <p>The following ingredients are insufficient for your cart:</p>
-              <div className={styles.issuesList}>
-                {stockResult.insufficient.map((ingredient, idx) => (
-                  <div key={idx} className={styles.issueItem}>
-                    <div className={styles.issueIngredientHeader}>
-                      <span className={styles.issueIngredientName}>❌ {ingredient.name}</span>
-                      <span className={styles.issueShortfall}>
-                        Short by: {ingredient.shortfall.toFixed(2)} {ingredient.unit}
-                      </span>
-                    </div>
-                    <div className={styles.issueProducts}>
-                      {ingredient.products.map((p, pIdx) => (
-                        <div key={pIdx} className={styles.issueProductDetail}>
-                          🍽️ {p.productName} x{p.cartQuantity} → needs {p.requiredForThis.toFixed(2)} {ingredient.unit}
-                        </div>
-                      ))}
-                    </div>
-                    <div className={styles.issueSummary}>
-                      Available: {ingredient.available.toFixed(2)} {ingredient.unit} | 
-                      Required: {ingredient.required.toFixed(2)} {ingredient.unit}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button className={styles.closeErrorBtn} onClick={() => setShowStockModal(false)}>
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Payment Modal */}
       {showPaymentModal && selectedOrderForPayment && (
@@ -339,7 +280,11 @@ function PosSales() {
                 <label>Payment Method</label>
                 <div className={styles.methodButtons}>
                   {["CASH", "KPAY", "WAVE", "CARD"].map(method => (
-                    <button key={method} className={`${styles.methodBtn} ${paymentMethod === method ? styles.active : ""}`} onClick={() => setPaymentMethod(method)}>
+                    <button 
+                      key={method} 
+                      className={`${styles.methodBtn} ${paymentMethod === method ? styles.active : ""}`} 
+                      onClick={() => setPaymentMethod(method)}
+                    >
                       {method === "CASH" ? "💵 Cash" : method === "KPAY" ? "🏦 KBZ Pay" : method === "WAVE" ? "📱 Wave Pay" : "💳 Card"}
                     </button>
                   ))}
@@ -348,12 +293,26 @@ function PosSales() {
               {paymentMethod === "CASH" && (
                 <div className={styles.formGroup}>
                   <label>Cash Received (Ks)</label>
-                  <input type="number" placeholder="Enter amount received" value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} className={styles.cashInput} />
-                  {cashReceived && <div className={styles.changeAmount}>Change: {getChangeAmount().toLocaleString()} Ks</div>}
+                  <input 
+                    type="number" 
+                    placeholder="Enter amount received" 
+                    value={cashReceived} 
+                    onChange={(e) => setCashReceived(e.target.value)} 
+                    className={styles.cashInput} 
+                  />
+                  {cashReceived && (
+                    <div className={styles.changeAmount}>
+                      Change: {getChangeAmount().toLocaleString()} Ks
+                    </div>
+                  )}
                 </div>
               )}
-              <button className={styles.confirmPayBtn} onClick={handleConfirmPayment} disabled={loading}>
-                {loading ? "Processing..." : "Confirm Payment"}
+              <button 
+                className={styles.confirmPayBtn} 
+                onClick={handleConfirmPayment} 
+                disabled={loading || actionLoading}
+              >
+                {loading || actionLoading ? "Processing..." : "Confirm Payment"}
               </button>
             </div>
           </div>

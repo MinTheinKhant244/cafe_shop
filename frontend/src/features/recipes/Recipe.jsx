@@ -14,7 +14,7 @@ import {
 } from "./recipeSlice";
 import { fetchAllProducts } from "../products/productSLice";
 import { fetchAllCategories } from "../categories/categorySlice";
-import { fetchAllInventory } from "../inventories/inventorySlice";
+import { fetchAllInventory } from "../inventory/inventorySlice";
 import Sidebar from "../../components/Sidebar";
 import styles from "../../assets/css/recipe.module.css";
 

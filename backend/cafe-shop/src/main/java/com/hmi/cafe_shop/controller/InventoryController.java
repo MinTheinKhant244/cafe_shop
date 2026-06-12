@@ -2,7 +2,12 @@ package com.hmi.cafe_shop.controller;
 
 import com.hmi.cafe_shop.dto.InventoryPriceHistory;
 import com.hmi.cafe_shop.dto.InventoryTransaction;
+import com.hmi.cafe_shop.dto.ProductStockStatusDTO;
 import com.hmi.cafe_shop.entity.Inventory;
+import com.hmi.cafe_shop.entity.Order;
+import com.hmi.cafe_shop.entity.Product;
+import com.hmi.cafe_shop.repository.OrderRepository;
+import com.hmi.cafe_shop.repository.ProductRepository;
 import com.hmi.cafe_shop.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +24,7 @@ import java.util.Map;
 @CrossOrigin("*")
 public class InventoryController {
 
+	private final ProductRepository productRepository;
     private final InventoryService inventoryService;
 
     @GetMapping
@@ -165,7 +171,6 @@ public class InventoryController {
         }
     }
     
- // ✅ Add Stock (Purchase)
     @PostMapping("/{id}/add-stock")
     public ResponseEntity<?> addStock(
             @PathVariable Long id,
@@ -215,7 +220,6 @@ public class InventoryController {
         }
     }
 
-    // ✅ Adjust Stock
     @PutMapping("/{id}/adjust-stock")
     public ResponseEntity<?> adjustStock(
             @PathVariable Long id,
@@ -233,7 +237,15 @@ public class InventoryController {
                     .body(createErrorResponse(e.getMessage()));
         }
     }
-
+    
+    @GetMapping("/product/{productId}/status")
+    public ResponseEntity<ProductStockStatusDTO> getProductStockStatus(@PathVariable Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        
+        return ResponseEntity.ok(inventoryService.getProductStockStatus(product));
+    }
+    
     // Get Transaction History
     @GetMapping("/{id}/transactions")
     public ResponseEntity<?> getTransactionHistory(@PathVariable Long id) {

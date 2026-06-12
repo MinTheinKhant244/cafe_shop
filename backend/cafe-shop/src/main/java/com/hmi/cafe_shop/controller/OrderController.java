@@ -3,6 +3,7 @@ package com.hmi.cafe_shop.controller;
 import com.hmi.cafe_shop.dto.StockCheckRequest;
 import com.hmi.cafe_shop.dto.StockCheckResponse;
 import com.hmi.cafe_shop.entity.Order;
+import com.hmi.cafe_shop.repository.OrderRepository;
 import com.hmi.cafe_shop.service.OrderService;
 
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class OrderController {
 
+	private final OrderRepository orderRepository;
     private final OrderService orderService;
 
     @PostMapping("/create")
@@ -54,6 +56,16 @@ public class OrderController {
             @PathVariable Long id,
             @RequestParam String status) {
         return ResponseEntity.ok(orderService.updateStatus(id, status));
+    }
+    
+ // 2. Deduct Stock API (For Order Checkout)
+    @PostMapping("/order/{orderId}/deduct")
+    public ResponseEntity<String> deductStockForOrder(@PathVariable Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        
+        orderService.deductStockForOrder(order);
+        return ResponseEntity.ok("Stock deducted successfully");
     }
 
     @PatchMapping("/payment/{id}")

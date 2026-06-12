@@ -137,4 +137,40 @@ public class OrderServiceImpl implements OrderService {
         order.setPaymentStatus(paymentStatus);
         return orderRepository.save(order);
     }
+    
+    @Override
+    @Transactional
+    public void deductStockForOrder(Order order) {
+        if (order.getOrderItems() == null || order.getOrderItems().isEmpty()) {
+            return;
+        }
+
+        for (OrderItem item : order.getOrderItems()) {
+            Product product = item.getProduct();
+            Integer quantity = item.getQuantity();
+
+            // Product တစ်ခုချင်းစီအတွက် Recipe စာရင်းကို ဆွဲထုတ်ပါ
+            List<Recipe> recipes = recipeRepository.findByProductId(product.getId());
+
+            for (Recipe recipe : recipes) {
+                Inventory ingredient = recipe.getInventory();
+                double amountToDeduct = recipe.getQuantity() * quantity;
+
+                // ကုန်ကြမ်းလက်ကျန် စစ်ဆေးခြင်း
+                if (ingredient.getQuantity() < amountToDeduct) {
+                    throw new RuntimeException("Insufficient stock for ingredient:" + ingredient.getName());
+                }
+                ingredient.setQuantity(ingredient.getQuantity() - amountToDeduct);
+                
+                if (ingredient.getQuantity() <= ingredient.getLowStockThreshold()) {
+                    System.out.println("Alert: " + ingredient.getName() + " ကုန်ခါနီးနေပါပြီ။");
+                }
+
+                inventoryRepository.save(ingredient);
+                
+             // Transaction log ကိုပါ ဆက်လက်မှတ်တမ်းတင်ပါ (သင်၏မူလ code အတိုင်း)
+            }
+        }
+    }
+
 }

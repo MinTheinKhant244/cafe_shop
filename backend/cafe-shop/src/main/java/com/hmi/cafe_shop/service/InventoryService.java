@@ -3,7 +3,10 @@ package com.hmi.cafe_shop.service;
 
 import com.hmi.cafe_shop.dto.InventoryPriceHistory;
 import com.hmi.cafe_shop.dto.InventoryTransaction;
+import com.hmi.cafe_shop.dto.ProductStockStatusDTO;
 import com.hmi.cafe_shop.entity.Inventory;
+import com.hmi.cafe_shop.entity.Order;
+import com.hmi.cafe_shop.entity.Product;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +19,7 @@ public interface InventoryService {
     Inventory save(Inventory inventory);
     Inventory update(Long id, Inventory inventory);
     void delete(Long id);
+    ProductStockStatusDTO getProductStockStatus(Product product);
     
     // Stock Operations (Enhanced)
     Inventory addStock(Long id, Double quantity, Double price, String invoiceNo, String notes, String performedBy);

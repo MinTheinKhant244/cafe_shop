@@ -1,180 +1,147 @@
 import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart, updateCartItemLimit } from "../sales/cartSlice";
-import { getProductMaxQuantity, updateProductLimit, checkAddProductStock } from "../sales/stockCheckSlice";
+import { addToCart, updateCartItemLimit } from "../carts/cartSlice";
+import { getProductStockStatus } from "../inventory/inventorySlice";
 import styles from "../../assets/css/posSales.module.css";
 
 function ProductCard({ product }) {
   const dispatch = useDispatch();
   const [added, setAdded] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [localMaxQuantity, setLocalMaxQuantity] = useState(null);
-  const [checkingRealTime, setCheckingRealTime] = useState(false);
+  const [stockStatus, setStockStatus] = useState(null);
+  const [checkingStock, setCheckingStock] = useState(false);
+  const [apiError, setApiError] = useState(false);
   const fetchedRef = useRef(false);
   
   const cartItems = useSelector((state) => state.cart.items);
-  const productLimits = useSelector((state) => state.stockCheck?.productLimits || {});
-  const cartWideInfo = useSelector((state) => state.stockCheck?.cartWideInfo);
-  const refreshVersion = useSelector((state) => state.stockCheck?.refreshVersion || 0);
+  const refreshVersion = useSelector((state) => state.cart?.refreshVersion || 0);
   
   const existingItem = cartItems.find(item => item.id === product.id);
   const currentQuantity = existingItem?.quantity || 0;
   
-  const maxQuantity = productLimits[product.id] !== undefined ? productLimits[product.id] : localMaxQuantity;
+  // ⭐ Default to available if API fails (don't block user)
+  const currentStock = stockStatus?.currentStock ?? 999;
+  const isOutOfStock = stockStatus?.outOfStock === true && currentStock <= 0;
   
-  const productStockIssue = cartWideInfo?.productIssues?.find(
-    issue => issue.productId === product.id
-  );
-  
-  // ⭐ CRITICAL FIX: isOutOfStock should be based on maxQuantity, NOT remaining stock
-  // If maxQuantity is 0 -> Out of stock
-  // If maxQuantity > 0 -> Available (even if 1 left)
-  const isOutOfStock = maxQuantity === 0;
-  const remainingStock = maxQuantity !== null ? maxQuantity - currentQuantity : null;
-  const isLowStock = remainingStock !== null && remainingStock > 0 && remainingStock <= 5;
-  
-  // Display quantity shows remaining (max - current) if positive, otherwise shows max
-  const displayQuantity = remainingStock !== null && remainingStock > 0 ? remainingStock : maxQuantity;
+  // Calculate remaining stock
+  const remainingStock = currentStock - currentQuantity;
+  const isLowStock = !isOutOfStock && remainingStock > 0 && remainingStock <= 5;
+  const displayQuantity = remainingStock > 0 ? remainingStock : (currentStock > 0 ? currentStock : 0);
 
-  // Refresh product limit when cart changes or refreshVersion changes
-  useEffect(() => {
-    const refreshProductLimit = async () => {
-      if (fetchedRef.current && cartItems.length > 0) {
-        const currentCartItems = cartItems.map(item => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity
-        }));
-        
-        try {
-          const result = await dispatch(checkAddProductStock({ 
-            product, 
-            currentCartItems 
-          })).unwrap();
-          
-          const newMax = result.maxAllowedQuantity;
-          setLocalMaxQuantity(newMax);
-          dispatch(updateProductLimit({ productId: product.id, maxQuantity: newMax }));
-          
-          if (existingItem && newMax < existingItem.quantity) {
-            dispatch(updateCartItemLimit({ productId: product.id, maxAllowed: newMax }));
-          }
-        } catch (error) {
-          console.error("Refresh product limit error:", error);
-        }
-      }
-    };
+  // Fetch product stock status from inventory API
+  const fetchProductStock = async () => {
+    if (!product?.id) return;
     
-    refreshProductLimit();
-  }, [refreshVersion, cartItems, product.id, dispatch, existingItem]);
+    setCheckingStock(true);
+    setApiError(false);
+    try {
+      const result = await dispatch(getProductStockStatus(product.id)).unwrap();
+      console.log(`Stock for ${product.name}:`, result);
+      setStockStatus(result);
+      
+      // Update cart item limit if needed
+      const maxAllowed = result.currentStock || 999;
+      if (existingItem && maxAllowed < existingItem.quantity) {
+        dispatch(updateCartItemLimit({ 
+          productId: product.id, 
+          maxAllowed: maxAllowed 
+        }));
+      }
+    } catch (error) {
+      console.error(`Failed to fetch stock status for ${product.name}:`, error);
+      setApiError(true);
+      // ⭐ If API fails, assume product is available (don't block sales)
+      setStockStatus({ currentStock: 999, outOfStock: false });
+    } finally {
+      setCheckingStock(false);
+    }
+  };
 
   // Initial fetch
   useEffect(() => {
-    if (productLimits[product.id] === undefined && !fetchedRef.current) {
+    if (!fetchedRef.current && product?.id) {
       fetchedRef.current = true;
-      dispatch(getProductMaxQuantity(product)).then((result) => {
-        if (getProductMaxQuantity.fulfilled.match(result)) {
-          setLocalMaxQuantity(result.payload.maxQuantity);
-        }
-      });
+      fetchProductStock();
     }
-  }, [product.id, dispatch, productLimits]);
+  }, [product.id]);
+
+  // Refresh stock when cart changes
+  useEffect(() => {
+    if (fetchedRef.current && product?.id) {
+      const timeoutId = setTimeout(() => {
+        fetchProductStock();
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [refreshVersion, product.id, currentQuantity]);
 
   // Handle add to cart
   const handleAdd = async () => {
-    if (adding || checkingRealTime) return;
+    if (adding || checkingStock) return;
     
-    // ⭐ FIXED: Check if maxQuantity is 0 (out of stock)
-    if (maxQuantity === 0) {
+    // ⭐ Don't block if API is still loading - allow add
+    // Only block if we know for sure it's out of stock
+    if (stockStatus && isOutOfStock) {
       alert(`"${product.name}" is out of stock!`);
       return;
     }
     
-    // Check if remaining stock is 0
-    if (remainingStock !== null && remainingStock <= 0) {
-      alert(`Cannot add more "${product.name}" - Only ${maxQuantity} total available!`);
-      return;
+    // If still checking stock, allow add (optimistic)
+    if (checkingStock) {
+      // Still allow add, will sync later
+      console.log("Still checking stock, adding anyway...");
     }
     
     setAdding(true);
-    setCheckingRealTime(true);
     
     try {
-      const currentCartItems = cartItems.map(item => ({
-        id: item.id,
-        name: item.name,
-        quantity: item.quantity
+      // Fetch latest stock status before adding
+      const latestStock = await dispatch(getProductStockStatus(product.id)).unwrap();
+      setStockStatus(latestStock);
+      
+      const currentMax = latestStock.currentStock || 999;
+      const currentInCart = currentQuantity;
+      
+      // Check if we can add more (only if we have stock info)
+      if (currentMax !== 999 && currentInCart + 1 > currentMax) {
+        alert(`Only ${currentMax} of "${product.name}" available!`);
+        setAdding(false);
+        return;
+      }
+      
+      // Add to cart
+      dispatch(addToCart({ 
+        ...product, 
+        maxAllowedQuantity: currentMax === 999 ? 99 : currentMax,
+        currentStock: latestStock.currentStock
       }));
       
-      const result = await dispatch(checkAddProductStock({ 
-        product, 
-        currentCartItems 
-      })).unwrap();
+      setAdded(true);
+      setTimeout(() => setAdded(false), 1000);
       
-      if (result.canAdd) {
-        dispatch(addToCart({ 
-          ...product, 
-          maxAllowedQuantity: result.maxAllowedQuantity
-        }));
-        
-        setLocalMaxQuantity(result.maxAllowedQuantity);
-        dispatch(updateProductLimit({ productId: product.id, maxQuantity: result.maxAllowedQuantity }));
-        
-        setAdded(true);
-        setTimeout(() => setAdded(false), 1000);
-      } else {
-        if (result.insufficientIngredients && result.insufficientIngredients.length > 0) {
-          const ingredientList = result.insufficientIngredients.map(i => 
-            `${i.name} (need ${i.shortfall.toFixed(2)} ${i.unit})`
-          ).join(", ");
-          alert(`Cannot add "${product.name}"! Insufficient: ${ingredientList}`);
-        } else if (result.isOutOfStock || result.maxAllowedQuantity === 0) {
-          alert(`"${product.name}" is out of stock!`);
-        } else {
-          alert(`Only ${result.maxAllowedQuantity} of "${product.name}" available in total!`);
-        }
-        setLocalMaxQuantity(result.maxAllowedQuantity);
-        dispatch(updateProductLimit({ productId: product.id, maxQuantity: result.maxAllowedQuantity }));
-      }
     } catch (error) {
       console.error("Stock check error:", error);
-      alert("Failed to check stock availability. Please try again.");
+      // ⭐ Even if error, allow adding to cart (optimistic)
+      dispatch(addToCart({ 
+        ...product, 
+        maxAllowedQuantity: 99,
+        currentStock: 999
+      }));
+      setAdded(true);
+      setTimeout(() => setAdded(false), 1000);
     } finally {
       setAdding(false);
-      setCheckingRealTime(false);
     }
   };
 
-  // Loading state
-  if (maxQuantity === null && !fetchedRef.current) {
-    return (
-      <div className={styles.productCard}>
-        <div className={styles.productImageWrapper}>
-          <img 
-            src={`http://localhost:8080/uploads/${product.image}`} 
-            alt={product.name}
-            className={styles.productImage}
-            onError={(e) => e.target.src = "/placeholder.png"}
-          />
-          <div className={styles.loadingBadge}>Loading...</div>
-        </div>
-        <div className={styles.productInfo}>
-          <h4 className={styles.productTitle}>{product.name}</h4>
-          <p className={styles.productCategory}>{product.category?.name}</p>
-          <div className={styles.stockLoading}>Checking stock...</div>
-          <div className={styles.productFooter}>
-            <span className={styles.productPrice}>{product.price?.toLocaleString()} Ks</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Don't show loading for too long
+  const showLoading = (stockStatus === null && !fetchedRef.current && !apiError) || (checkingStock && !stockStatus);
 
   return (
     <div 
       className={`${styles.productCard} ${isOutOfStock ? styles.disabled : ""}`} 
-      onClick={!isOutOfStock ? handleAdd : undefined}
-      style={{ cursor: isOutOfStock ? 'not-allowed' : 'pointer', opacity: isOutOfStock ? 0.5 : 1 }}
+      onClick={handleAdd}
+      style={{ cursor: 'pointer', opacity: 1 }}
     >
       <div className={styles.productImageWrapper}>
         <img 
@@ -189,16 +156,16 @@ function ProductCard({ product }) {
         {isLowStock && !isOutOfStock && (
           <div className={styles.lowStockBadge}>Low Stock</div>
         )}
-        {checkingRealTime && (
-          <div className={styles.checkingBadge}>Checking...</div>
+        {showLoading && (
+          <div className={styles.loadingBadge}>Loading...</div>
         )}
       </div>
       <div className={styles.productInfo}>
         <h4 className={styles.productTitle}>{product.name}</h4>
         <p className={styles.productCategory}>{product.category?.name}</p>
         
-        {/* ⭐ FIXED: Show stock info correctly */}
-        {maxQuantity !== null && !isOutOfStock && (
+        {/* Stock info display */}
+        {!showLoading && stockStatus && currentStock > 0 && currentStock !== 999 && !isOutOfStock && (
           <div className={`${styles.stockInfo} ${isLowStock ? styles.lowStockWarning : ''}`}>
             📦 {displayQuantity} {product.unit || 'units'} left
             {currentQuantity > 0 && (
@@ -207,14 +174,17 @@ function ProductCard({ product }) {
           </div>
         )}
         
-        {isOutOfStock && (
-          <div className={styles.outOfStockMsg}>⚠️ Out of stock</div>
+        {!showLoading && stockStatus && currentStock === 999 && !isOutOfStock && (
+          <div className={styles.stockInfo}>
+            📦 In stock
+            {currentQuantity > 0 && (
+              <span className={styles.inCartQuantity}> ({currentQuantity} in cart)</span>
+            )}
+          </div>
         )}
         
-        {productStockIssue && !isOutOfStock && (
-          <div className={styles.cartWideWarning}>
-            ⚠️ Adding more may cause stock issue
-          </div>
+        {isOutOfStock && (
+          <div className={styles.outOfStockMsg}>⚠️ Out of stock</div>
         )}
         
         <div className={styles.productFooter}>

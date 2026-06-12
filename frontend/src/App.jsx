@@ -9,7 +9,7 @@ import Order from "./features/orders/Order.jsx"
 import Table from "./features/tables/Table.jsx"
 import PosSales from "./features/sales/PosSales.jsx"
 import ProtectedRoute from "./components/ProtectedRoute.jsx"
-import Inventory from "./features/inventories/Inventory.jsx"
+import Inventory from "./features/inventory/Inventory.jsx"
 import Recipe from "./features/recipes/Recipe.jsx"
 
 function App() {

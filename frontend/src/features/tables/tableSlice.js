@@ -21,6 +21,7 @@ export const addTable = createAsyncThunk(
   async (tableData, { rejectWithValue }) => {
     try {
       const response = await api.post("/tables/create", tableData);
+      console.log(response)
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.error || "Failed to add table");

@@ -22,7 +22,6 @@ export const createOrder = createAsyncThunk(
       const response = await api.post("/orders/create", orderData);
       return response.data;
     } catch (error) {
-      // Stock error ကို သီးသန့် handle လုပ်ဖို့
       const errorData = error.response?.data;
       if (errorData?.stockIssues) {
         return thunkAPI.rejectWithValue({
@@ -32,6 +31,21 @@ export const createOrder = createAsyncThunk(
       }
       return thunkAPI.rejectWithValue(
         errorData?.message || "Failed to create order"
+      );
+    }
+  }
+);
+
+// ⭐ NEW: Deduct Stock for Order
+export const deductStockForOrder = createAsyncThunk(
+  "orders/deductStock",
+  async (orderId, thunkAPI) => {
+    try {
+      const response = await api.post(`/order/${orderId}/deduct`);
+      return { orderId, message: response.data };
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.error || "Failed to deduct stock for order"
       );
     }
   }
@@ -94,15 +108,23 @@ const orderSlice = createSlice({
     loading: false,
     actionLoading: false,
     error: null,
-    stockCheck: { loading: false, issues: [], available: true } // ⭐ Stock check state
+    stockCheck: { loading: false, issues: [], available: true },
+    orderDeductionStatus: {}  // ⭐ NEW: Track deduction status by orderId
   },
 
   reducers: {
     clearOrderError: (state) => {
       state.error = null;
     },
-    clearStockIssues: (state) => {  // ⭐ Clear stock issues
+    clearStockIssues: (state) => {
       state.stockCheck = { loading: false, issues: [], available: true };
+    },
+    clearOrderDeductionStatus: (state, action) => {  // ⭐ NEW: Clear deduction status
+      if (action.payload) {
+        delete state.orderDeductionStatus[action.payload];
+      } else {
+        state.orderDeductionStatus = {};
+      }
     }
   },
 
@@ -145,12 +167,11 @@ const orderSlice = createSlice({
       .addCase(createOrder.fulfilled, (state, action) => {
         state.actionLoading = false;
         state.list.unshift(action.payload);
-        state.stockCheck = { loading: false, issues: [], available: true }; // Reset stock check
+        state.stockCheck = { loading: false, issues: [], available: true };
       })
       .addCase(createOrder.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload?.message || action.payload;
-        // ⭐ Stock issues ရှိရင် သိမ်းထားပါ
         if (action.payload?.stockIssues) {
           state.stockCheck = {
             loading: false,
@@ -158,6 +179,26 @@ const orderSlice = createSlice({
             issues: action.payload.stockIssues
           };
         }
+      })
+
+      // ================= DEDUCT STOCK (NEW) =================
+      .addCase(deductStockForOrder.pending, (state, action) => {
+        state.orderDeductionStatus[action.meta.arg] = { status: 'loading', message: null };
+      })
+      .addCase(deductStockForOrder.fulfilled, (state, action) => {
+        state.orderDeductionStatus[action.payload.orderId] = {
+          status: 'succeeded',
+          message: action.payload.message
+        };
+      })
+      .addCase(deductStockForOrder.rejected, (state, action) => {
+        if (action.meta.arg) {
+          state.orderDeductionStatus[action.meta.arg] = {
+            status: 'failed',
+            message: action.payload
+          };
+        }
+        state.error = action.payload;
       })
 
       // ================= STATUS =================
@@ -198,5 +239,5 @@ const orderSlice = createSlice({
   },
 });
 
-export const { clearOrderError, clearStockIssues } = orderSlice.actions;
+export const { clearOrderError, clearStockIssues, clearOrderDeductionStatus } = orderSlice.actions;
 export default orderSlice.reducer;

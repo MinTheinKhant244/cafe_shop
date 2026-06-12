@@ -20,6 +20,7 @@ public interface OrderService {
     Optional<Order> getByInvoice(String invoiceNo);
 
     Order updateStatus(Long id, String status);
+    void deductStockForOrder(Order order);
 
     Order updatePayment(Long id, String paymentStatus);
 }

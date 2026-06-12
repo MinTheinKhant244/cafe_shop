@@ -3,16 +3,26 @@ package com.hmi.cafe_shop.serviceImpl;
 
 import com.hmi.cafe_shop.dto.InventoryPriceHistory;
 import com.hmi.cafe_shop.dto.InventoryTransaction;
+import com.hmi.cafe_shop.dto.ProductStockStatusDTO;
+import com.hmi.cafe_shop.entity.CartItem;
 import com.hmi.cafe_shop.entity.Inventory;
+import com.hmi.cafe_shop.entity.Order;
+import com.hmi.cafe_shop.entity.OrderItem;
+import com.hmi.cafe_shop.entity.Product;
+import com.hmi.cafe_shop.entity.Recipe;
+import com.hmi.cafe_shop.repository.CartItemRepository;
 import com.hmi.cafe_shop.repository.InventoryPriceHistoryRepository;
 import com.hmi.cafe_shop.repository.InventoryRepository;
 import com.hmi.cafe_shop.repository.InventoryTransactionRepository;
+import com.hmi.cafe_shop.repository.RecipeRepository;
 import com.hmi.cafe_shop.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -20,7 +30,9 @@ import java.util.Optional;
 @Transactional
 public class InventoryServiceImpl implements InventoryService {
 
+	private final RecipeRepository recipeRepository;
     private final InventoryRepository inventoryRepository;
+    private final CartItemRepository cartItemRepository;
     private final InventoryTransactionRepository transactionRepository;
     private final InventoryPriceHistoryRepository priceHistoryRepository;
 
@@ -220,7 +232,7 @@ public class InventoryServiceImpl implements InventoryService {
         
         return inventoryRepository.save(inventory);
     }
-
+    
     @Override
     @Transactional
     public Inventory updateStock(Long id, Integer quantity) {
@@ -233,6 +245,45 @@ public class InventoryServiceImpl implements InventoryService {
         }
         
         return adjustStock(id, newQuantity, "Direct stock update", "system");
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public ProductStockStatusDTO getProductStockStatus(Product product) {
+
+    	List<CartItem> allItems = cartItemRepository.findAll(); 
+
+        Map<Long, Double> totalIngredientNeeded = new HashMap<>();
+        
+        for (CartItem item : allItems) {
+            List<Recipe> recipes = recipeRepository.findByProductId(item.getProduct().getId());
+            for (Recipe recipe : recipes) {
+                double required = recipe.getQuantity() * item.getQuantity();
+                totalIngredientNeeded.put(recipe.getInventory().getId(), 
+                    totalIngredientNeeded.getOrDefault(recipe.getInventory().getId(), 0.0) + required);
+            }
+        }
+
+        List<Recipe> productRecipes = recipeRepository.findByProductId(product.getId());
+        double minStock = Double.MAX_VALUE;
+
+        for (Recipe recipe : productRecipes) {
+            Inventory inv = recipe.getInventory();
+            
+            // လက်ကျန် = စုစုပေါင်းရှိသမျှ - (Cart ထဲက တခြားပစ္စည်းတွေအတွက် လိုအပ်ချက် + ဒီပစ္စည်းအတွက် လိုအပ်ချက်)
+            double alreadyReserved = totalIngredientNeeded.getOrDefault(inv.getId(), 0.0);
+            
+            // Available = (Inventory Total - Reserved) / Recipe Ratio
+            double availableForThisIngredient = (inv.getQuantity() - alreadyReserved) / recipe.getQuantity();
+            minStock = Math.min(minStock, availableForThisIngredient);
+        }
+
+        return new ProductStockStatusDTO(
+            product.getId(),
+            product.getName(),
+            Math.max(0, minStock),
+            minStock <= 0
+        );
     }
 
     @Override

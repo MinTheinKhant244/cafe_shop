@@ -1,7 +1,11 @@
 package com.hmi.cafe_shop.repository;
 
 import com.hmi.cafe_shop.entity.Inventory;
+
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -25,4 +29,10 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     List<Inventory> searchByName(@Param("keyword") String keyword);
     
     boolean existsByName(String name);
+    
+    
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM Inventory i WHERE i.id = :id")
+    Inventory findByIdWithLock(@Param("id") Long id);
+    
 }
