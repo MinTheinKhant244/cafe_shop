@@ -44,6 +44,9 @@
   overflow-y: auto;
   width: 100%;
   transition: all 0.3s ease;
+  /* Sticky header အတွက် */
+  height: 100vh;
+  scroll-behavior: smooth;
 }
 
 /* Mobile အတွက် mainContent padding */
@@ -53,7 +56,7 @@
   }
 }
 
-/* Header */
+/* Header - Sticky Version */
 .header {
   display: flex;
   justify-content: space-between;
@@ -64,6 +67,10 @@
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+  /* Sticky Header */
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 @media (max-width: 768px) {
@@ -144,12 +151,19 @@
   color: #7f8c8d;
 }
 
-/* Statistics Bar */
+/* Statistics Bar - Sticky Version */
 .statsBar {
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+  /* Sticky Stats Bar */
+  position: sticky;
+  top: 77px; /* Header ရဲ့အမြင့် */
+  z-index: 99;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  padding: 8px 0;
+  margin-top: 0;
 }
 
 .statCard {
@@ -197,7 +211,7 @@
   }
 }
 
-/* Filter Section */
+/* Filter Section - Sticky Version */
 .filterSection {
   background: white;
   padding: 15px 20px;
@@ -207,6 +221,11 @@
   gap: 15px;
   flex-wrap: wrap;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  /* Sticky Filter Section */
+  position: sticky;
+  top: 133px; /* Header (77px) + Stats Bar (56px) */
+  z-index: 98;
+  background: white;
 }
 
 .searchBox {
@@ -234,6 +253,7 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .filterGroup input,
@@ -266,6 +286,7 @@
 @media (max-width: 768px) {
   .filterGroup {
     flex-direction: column;
+    align-items: stretch;
   }
   
   .filterGroup input,
@@ -276,6 +297,33 @@
 
 .dateInput {
   cursor: pointer;
+}
+
+/* Clear Filters Button */
+.clearFiltersBtn {
+  padding: 10px 18px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  color: #dc3545;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.clearFiltersBtn:hover {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .clearFiltersBtn {
+    width: 100%;
+  }
 }
 
 /* Table Container */
@@ -294,6 +342,8 @@
 
 .orderTable thead {
   background: #f8f9fa;
+  position: sticky;
+  top: 0;
 }
 
 .orderTable th {
@@ -753,10 +803,15 @@
 @media (max-width: 768px) {
   .statsBar {
     flex-wrap: wrap;
+    top: 65px;
   }
   
   .statCard {
     min-width: calc(33% - 8px);
+  }
+  
+  .filterSection {
+    top: 121px;
   }
 }
 
@@ -773,48 +828,12 @@
   .statusSelect, .paymentSelect {
     min-width: 80px;
   }
-}
-
-/* Clear Filters Button */
-.clearFiltersBtn {
-  padding: 10px 18px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 10px;
-  color: #dc3545;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.85rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.clearFiltersBtn:hover {
-  background: #dc3545;
-  color: white;
-  border-color: #dc3545;
-  transform: translateY(-1px);
-}
-
-/* Update filter group to accommodate the clear button */
-.filterGroup {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-@media (max-width: 768px) {
-  .filterGroup {
-    flex-direction: column;
-    align-items: stretch;
+  
+  .statsBar {
+    top: 60px;
   }
   
-  .clearFiltersBtn {
-    width: 100%;
-  }
-  
-  .dateInput {
-    width: 100%;
+  .filterSection {
+    top: 116px;
   }
 }

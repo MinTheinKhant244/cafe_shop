@@ -48,8 +48,8 @@ function Dashboard() {
       <Sidebar />
       <div className={styles.mainContent}>
         
-        {/* Header */}
-        <div className={styles.header}>
+        {/* Header - POS Style like PosSales */}
+        <div className={styles.posHeader}>
           <div className={styles.headerLeft}>
             <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
               ☰
@@ -59,9 +59,11 @@ function Dashboard() {
               <p className={styles.pageSubtitle}>Welcome back! Here's what's happening with your restaurant today.</p>
             </div>
           </div>
-          <div className={styles.dateBadge}>
-            <span className={styles.dateIcon}>📅</span>
-            <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <div className={styles.headerRight}>
+            <div className={styles.dateBadge}>
+              <span className={styles.dateIcon}>📅</span>
+              <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
           </div>
         </div>
 

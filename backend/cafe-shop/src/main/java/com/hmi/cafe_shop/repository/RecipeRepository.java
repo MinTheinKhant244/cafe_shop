@@ -27,4 +27,14 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     
     @Query("SELECT r FROM Recipe r JOIN FETCH r.product JOIN FETCH r.inventory WHERE r.product.id = :productId")
     List<Recipe> findByProductIdWithDetails(@Param("productId") Long productId);
+    
+    @Query("SELECT r FROM Recipe r JOIN FETCH r.inventory WHERE r.product.id = :productId")
+    List<Recipe> findByProductIdWithInventory(@Param("productId") Long productId);
+    
+    @Query("SELECT r FROM Recipe r JOIN FETCH r.inventory WHERE r.product.id IN :productIds")
+    List<Recipe> findByProductIdInWithInventory(@Param("productIds") List<Long> productIds);
+    
+    @Query("SELECT r FROM Recipe r JOIN FETCH r.product p JOIN FETCH r.inventory WHERE p.isActive = true")
+    List<Recipe> findAllActiveProductsWithInventory();
+    
 }

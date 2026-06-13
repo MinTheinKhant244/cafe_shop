@@ -1,12 +1,6 @@
 package com.hmi.cafe_shop.controller;
 
-import com.hmi.cafe_shop.dto.InventoryPriceHistory;
-import com.hmi.cafe_shop.dto.InventoryTransaction;
-import com.hmi.cafe_shop.dto.ProductStockStatusDTO;
 import com.hmi.cafe_shop.entity.Inventory;
-import com.hmi.cafe_shop.entity.Order;
-import com.hmi.cafe_shop.entity.Product;
-import com.hmi.cafe_shop.repository.OrderRepository;
 import com.hmi.cafe_shop.repository.ProductRepository;
 import com.hmi.cafe_shop.service.InventoryService;
 import lombok.RequiredArgsConstructor;
@@ -125,28 +119,6 @@ public class InventoryController {
         }
     }
 
-    @PatchMapping("/{id}/stock")
-    public ResponseEntity<?> updateStock(
-            @PathVariable Long id,
-            @RequestParam Integer quantity) {
-        try {
-            Inventory updated = inventoryService.updateStock(id, quantity);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Stock updated successfully");
-            response.put("inventory", updated);
-            response.put("newQuantity", updated.getQuantity());
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(createErrorResponse("Inventory item not found with id: " + id));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to update stock: " + e.getMessage()));
-        }
-    }
-
     @GetMapping("/check-name")
     public ResponseEntity<?> checkNameExists(@RequestParam String name) {
         try {
@@ -170,122 +142,9 @@ public class InventoryController {
                     .body(createErrorResponse("Failed to fetch items: " + e.getMessage()));
         }
     }
+
     
-    @PostMapping("/{id}/add-stock")
-    public ResponseEntity<?> addStock(
-            @PathVariable Long id,
-            @RequestParam Double quantity,
-            @RequestParam Double price,
-            @RequestParam(required = false) String invoiceNo,
-            @RequestParam(required = false) String notes,
-            @RequestParam(required = false) String performedBy) {
-        try {
-            Inventory updated = inventoryService.addStock(id, quantity, price, invoiceNo, notes, 
-                performedBy != null ? performedBy : "system");
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Stock added successfully");
-            response.put("inventory", updated);
-            response.put("newQuantity", updated.getQuantity());
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(createErrorResponse(e.getMessage()));
-        }
-    }
-
-    // Remove Stock (Usage, Wastage, Return)
-    @PostMapping("/{id}/remove-stock")
-    public ResponseEntity<?> removeStock(
-            @PathVariable Long id,
-            @RequestParam Double quantity,
-            @RequestParam String transactionType, // USAGE, WASTAGE, RETURN
-            @RequestParam(required = false) String referenceId,
-            @RequestParam(required = false) String notes,
-            @RequestParam(required = false) String performedBy) {
-        try {
-            Inventory updated = inventoryService.removeStock(id, quantity, transactionType, referenceId, notes,
-                performedBy != null ? performedBy : "system");
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Stock removed successfully");
-            response.put("inventory", updated);
-            response.put("newQuantity", updated.getQuantity());
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(createErrorResponse(e.getMessage()));
-        }
-    }
-
-    @PutMapping("/{id}/adjust-stock")
-    public ResponseEntity<?> adjustStock(
-            @PathVariable Long id,
-            @RequestParam Double newQuantity,
-            @RequestParam String reason,
-            @RequestParam(required = false) String performedBy) {
-        try {
-            Inventory updated = inventoryService.adjustStock(id, newQuantity, reason,
-                performedBy != null ? performedBy : "system");
-            return ResponseEntity.ok(updated);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(createErrorResponse(e.getMessage()));
-        }
-    }
-    
-    @GetMapping("/product/{productId}/status")
-    public ResponseEntity<ProductStockStatusDTO> getProductStockStatus(@PathVariable Long productId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-        
-        return ResponseEntity.ok(inventoryService.getProductStockStatus(product));
-    }
-    
-    // Get Transaction History
-    @GetMapping("/{id}/transactions")
-    public ResponseEntity<?> getTransactionHistory(@PathVariable Long id) {
-        try {
-            List<InventoryTransaction> transactions = inventoryService.getTransactionHistory(id);
-            return ResponseEntity.ok(transactions);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to fetch transactions: " + e.getMessage()));
-        }
-    }
-
-    // Get Price History
-    @GetMapping("/{id}/price-history")
-    public ResponseEntity<?> getPriceHistory(@PathVariable Long id) {
-        try {
-            List<InventoryPriceHistory> history = inventoryService.getPriceHistory(id);
-            return ResponseEntity.ok(history);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to fetch price history: " + e.getMessage()));
-        }
-    }
-
-    // Get Average Purchase Price
-    @GetMapping("/{id}/average-price")
-    public ResponseEntity<?> getAveragePurchasePrice(@PathVariable Long id) {
-        try {
-            Double avgPrice = inventoryService.getAveragePurchasePrice(id);
-            Map<String, Object> response = new HashMap<>();
-            response.put("averagePrice", avgPrice);
-            response.put("inventoryId", id);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to calculate average price: " + e.getMessage()));
-        }
-    }
-
-    // ✅ Get Total Stock Value
+    // Get Total Stock Value
     @GetMapping("/total-value")
     public ResponseEntity<?> getTotalStockValue() {
         try {

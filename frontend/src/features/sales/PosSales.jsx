@@ -5,9 +5,10 @@ import { fetchAllCategories } from "../../features/categories/categorySlice";
 import { createOrder, updatePaymentStatus, fetchAllOrders } from "../../features/orders/orderSlice";
 import { clearCart } from "../carts/cartSlice";
 import { toggleSidebar } from "../../app/uiSlice";
+import { getAllCartProductsStock, getMultipleProductsStock } from "../carts/cartSlice"; // 🔥 ADD THIS IMPORT
 import api from "../../app/api";
 import Sidebar from "../../components/Sidebar";
-import ProductCard from "../products/ProductCard";
+import ProductCard from "./ProductCard";
 import Cart from "../carts/Cart";
 import styles from "../../assets/css/posSales.module.css";
 
@@ -32,6 +33,9 @@ function PosSales() {
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
   const [pendingOrders, setPendingOrders] = useState([]);
+  
+  // 🔥 Refresh button state
+  const [isRefreshingStock, setIsRefreshingStock] = useState(false);
 
   // Initial data loading
   useEffect(() => {
@@ -56,6 +60,33 @@ function PosSales() {
     } catch (error) {
       console.error("Failed to fetch tables", error);
       setTables([]);
+    }
+  };
+
+  // 🔥 Refresh all product stocks manually
+  const handleRefreshAllStocks = async () => {
+    setIsRefreshingStock(true);
+    
+    try {
+      // Get all active product IDs
+      const activeProductIds = products?.filter(p => p.isActive).map(p => p.id) || [];
+      
+      if (activeProductIds.length > 0) {
+        await dispatch(getMultipleProductsStock({ productIds: activeProductIds })).unwrap();
+      }
+      
+      // If cart has items, also refresh cart products stock
+      if (items.length > 0) {
+        await dispatch(getAllCartProductsStock()).unwrap();
+      }
+      
+      alert(`✅ Stock refreshed! ${activeProductIds.length} products updated.`);
+      
+    } catch (error) {
+      console.error("Refresh failed:", error);
+      alert("❌ Failed to refresh stock. Please try again.");
+    } finally {
+      setIsRefreshingStock(false);
     }
   };
 
@@ -155,6 +186,7 @@ function PosSales() {
       <Sidebar />
       
       <div className={styles.mainContent}>
+        {/* Fixed Header */}
         <div className={styles.posHeader}>
           <div className={styles.headerLeft}>
             <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
@@ -163,6 +195,16 @@ function PosSales() {
             <h1 className={styles.pageTitle}>POS Sales</h1>
           </div>
           <div className={styles.headerRight}>
+            {/* 🔥 Refresh Button */}
+            <button 
+              className={styles.refreshBtn} 
+              onClick={handleRefreshAllStocks}
+              disabled={isRefreshingStock || productsLoading}
+              title="Refresh product stocks"
+            >
+              {isRefreshingStock ? "🔄 Refreshing..." : "🔄 Refresh"}
+            </button>
+            
             <select 
               className={styles.tableSelect}
               value={selectedTableId || ""}
@@ -179,82 +221,93 @@ function PosSales() {
           </div>
         </div>
 
-        {pendingOrders.length > 0 && (
-          <div className={styles.pendingOrdersSection}>
-            <div className={styles.pendingHeader}>
-              <h3>💰 Pending Payments</h3>
-              <span>{pendingOrders.length} orders</span>
-            </div>
-            <div className={styles.pendingOrdersList}>
-              {pendingOrders.map(order => (
-                <div key={order.id} className={styles.pendingOrderCard}>
-                  <div className={styles.pendingOrderInfo}>
-                    <span className={styles.invoiceNo}>#{order.invoiceNo}</span>
-                    <span className={styles.tableNo}>Table {order.table?.tableNo}</span>
-                    <span className={styles.amount}>{order.totalAmount?.toLocaleString()} Ks</span>
-                    <span className={`${styles.status} ${styles[order.status?.toLowerCase()]}`}>
-                      {order.status}
-                    </span>
+        {/* Scrollable Content Area */}
+        <div className={styles.scrollableContent}>
+          {/* Pending Orders Section */}
+          {pendingOrders.length > 0 && (
+            <div className={styles.pendingOrdersSection}>
+              <div className={styles.pendingHeader}>
+                <h3>💰 Pending Payments</h3>
+                <span>{pendingOrders.length} orders</span>
+              </div>
+              <div className={styles.pendingOrdersList}>
+                {pendingOrders.map(order => (
+                  <div key={order.id} className={styles.pendingOrderCard}>
+                    <div className={styles.pendingOrderInfo}>
+                      <span className={styles.invoiceNo}>#{order.invoiceNo}</span>
+                      <span className={styles.tableNo}>Table {order.table?.tableNo}</span>
+                      <span className={styles.amount}>{order.totalAmount?.toLocaleString()} Ks</span>
+                      <span className={`${styles.status} ${styles[order.status?.toLowerCase()]}`}>
+                        {order.status}
+                      </span>
+                    </div>
+                    <button className={styles.payNowBtn} onClick={() => handlePaymentForOrder(order)}>
+                      💳 Pay Now
+                    </button>
                   </div>
-                  <button className={styles.payNowBtn} onClick={() => handlePaymentForOrder(order)}>
-                    💳 Pay Now
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-
-        <div className={styles.categoryBar}>
-          <button 
-            className={`${styles.categoryChip} ${!selectedCategory ? styles.active : ""}`} 
-            onClick={() => setSelectedCategory("")}
-          >
-            All
-          </button>
-          {categories?.filter(c => c.isActive).map(cat => (
-            <button 
-              key={cat.id} 
-              className={`${styles.categoryChip} ${selectedCategory === cat.id ? styles.active : ""}`} 
-              onClick={() => setSelectedCategory(cat.id)}
-            >
-              {cat.name}
-            </button>
-          ))}
-          <div className={styles.searchWrapper}>
-            <input 
-              type="text" 
-              placeholder="🔍 Search menu..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-              className={styles.searchInput} 
-            />
-          </div>
-        </div>
-
-        <div className={styles.productsGrid}>
-          {productsLoading ? (
-            <div className={styles.loading}>Loading menu...</div>
-          ) : filteredProducts?.length === 0 ? (
-            <div className={styles.emptyProducts}>
-              <span>📭</span>
-              <p>No products found</p>
-            </div>
-          ) : (
-            filteredProducts.map(product => <ProductCard key={product.id} product={product} />)
           )}
+
+          {/* Category Bar - Sticky */}
+          <div className={styles.categoryBar}>
+            <button 
+              className={`${styles.categoryChip} ${!selectedCategory ? styles.active : ""}`} 
+              onClick={() => setSelectedCategory("")}
+            >
+              All
+            </button>
+            {categories?.filter(c => c.isActive).map(cat => (
+              <button 
+                key={cat.id} 
+                className={`${styles.categoryChip} ${selectedCategory === cat.id ? styles.active : ""}`} 
+                onClick={() => setSelectedCategory(cat.id)}
+              >
+                {cat.name}
+              </button>
+            ))}
+            <div className={styles.searchWrapper}>
+              <input 
+                type="text" 
+                placeholder="🔍 Search menu..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className={styles.searchInput} 
+              />
+            </div>
+          </div>
+
+          {/* Products Grid - Scrollable */}
+          <div className={styles.productsGrid}>
+            {productsLoading ? (
+              <div className={styles.loading}>Loading menu...</div>
+            ) : filteredProducts?.length === 0 ? (
+              <div className={styles.emptyProducts}>
+                <span>📭</span>
+                <p>No products found</p>
+              </div>
+            ) : (
+              filteredProducts.map(product => <ProductCard key={product.id} product={product} />)
+            )}
+          </div>
         </div>
       </div>
 
+      {/* Cart Sidebar */}
       <div className={`${styles.Cart} ${isMobileCartOpen ? styles.mobileOpen : ""}`}>
         <div className={styles.mobileCartHeader}>
           <h3>🛒 Your Order</h3>
           <button className={styles.closeMobileCart} onClick={toggleMobileCart}>×</button>
         </div>
-        <Cart onOrderSuccess={(order) => {
-          setOrderSuccess(order);
-          setIsMobileCartOpen(false);
-        }} />
+        <Cart 
+          cartId={null}
+          userId={user?.id || 1}
+          onOrderSuccess={(order) => {
+            setOrderSuccess(order);
+            setIsMobileCartOpen(false);
+          }} 
+        />
       </div>
 
       {isMobileCartOpen && <div className={styles.mobileOverlay} onClick={toggleMobileCart} />}

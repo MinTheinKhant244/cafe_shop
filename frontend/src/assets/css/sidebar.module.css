@@ -12,6 +12,7 @@
   z-index: 1000;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-x: hidden;
+  overflow-y: hidden; /* Hide main scrollbar */
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
@@ -43,14 +44,18 @@
   to { opacity: 1; }
 }
 
-/* Brand Section */
+/* ============================================ */
+/* BRAND SECTION - FIXED AT TOP */
+/* ============================================ */
 .sidebarBrand {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 20px 16px;
-  margin-bottom: 30px;
+  margin-bottom: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0; /* Prevent shrinking */
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
 }
 
 .logoWrapper {
@@ -82,12 +87,40 @@
   margin-top: 2px;
 }
 
+/* ============================================ */
+/* MENU CONTAINER - SCROLLABLE AREA */
+/* ============================================ */
+.menuContainer {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* Important for flex child scrolling */
+}
+
+/* Custom scrollbar for menu container */
+.menuContainer::-webkit-scrollbar {
+  width: 4px;
+}
+
+.menuContainer::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.menuContainer::-webkit-scrollbar-thumb {
+  background: rgba(243, 168, 7, 0.3);
+  border-radius: 4px;
+}
+
+.menuContainer::-webkit-scrollbar-thumb:hover {
+  background: rgba(243, 168, 7, 0.5);
+}
+
 /* Sidebar Menu */
 .sidebarMenu {
   list-style: none;
-  padding: 0;
+  padding: 8px 0;
   margin: 0;
-  flex: 1;
 }
 
 .sidebarMenu li {
@@ -147,11 +180,14 @@
   transform: translateX(2px);
 }
 
-/* Logout Section - Fixed at bottom */
+/* ============================================ */
+/* LOGOUT SECTION - FIXED AT BOTTOM */
+/* ============================================ */
 .logoutSection {
-  margin-top: auto;
-  padding: 20px 0;
+  flex-shrink: 0; /* Prevent shrinking */
+  padding: 16px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, #16213e 0%, #1a1a2e 100%);
 }
 
 .logoutBtn {
@@ -182,7 +218,7 @@
 
 /* Sidebar Footer / User Info */
 .sidebarFooter {
-  margin-top: 15px;
+  margin-top: 12px;
   padding: 0 8px;
 }
 
@@ -224,7 +260,9 @@
   font-size: 0.65rem;
 }
 
-/* Logout Confirmation Modal */
+/* ============================================ */
+/* LOGOUT CONFIRMATION MODAL */
+/* ============================================ */
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -322,6 +360,32 @@
 }
 
 /* ============================================ */
+/* MENU TOGGLE BUTTON FOR HEADER */
+/* ============================================ */
+.menuToggleBtn {
+  width: 40px;
+  height: 40px;
+  background: rgba(243, 168, 7, 0.1);
+  border: none;
+  border-radius: 10px;
+  color: #f3a807;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.menuToggleBtn i {
+  font-size: 1.2rem;
+}
+
+.menuToggleBtn:hover {
+  background: rgba(243, 168, 7, 0.2);
+  transform: scale(1.05);
+}
+
+/* ============================================ */
 /* RESPONSIVE DESIGN */
 /* ============================================ */
 
@@ -416,7 +480,6 @@
   
   .sidebarBrand {
     padding: 12px 16px;
-    margin-bottom: 15px;
   }
   
   .sidebarMenu li a {
@@ -446,29 +509,3 @@
     font-size: 1.3rem;
   }
 }
-
-
-/* header အတွက် CSS (သင့် header CSS ထဲထည့်ပါ) */
-.menuToggleBtn {
-  width: 40px;
-  height: 40px;
-  background: rgba(243, 168, 7, 0.1);
-  border: none;
-  border-radius: 10px;
-  color: #f3a807;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.menuToggleBtn i {
-  font-size: 1.2rem;
-}
-
-.menuToggleBtn:hover {
-  background: rgba(243, 168, 7, 0.2);
-  transform: scale(1.05);
-}
-

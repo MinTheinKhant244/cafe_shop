@@ -4,11 +4,6 @@ package com.hmi.cafe_shop.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.hmi.cafe_shop.dto.InventoryPriceHistory;
-import com.hmi.cafe_shop.dto.InventoryTransaction;
 
 @Entity
 @Table(name = "inventories")
@@ -42,13 +37,6 @@ public class Inventory {
 
     private LocalDateTime updatedAt;
     private LocalDateTime createdAt;
-    
-    // Add relationships
-    @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<InventoryTransaction> transactions = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<InventoryPriceHistory> priceHistories = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

@@ -60,7 +60,7 @@ function Sidebar() {
       )}
       
       <aside className={`${styles.sidebar} ${isExpanded ? styles.expanded : ""} ${isMobile ? styles.mobile : ""}`}>
-        {/* Brand Section */}
+        {/* Brand Section - Fixed at Top */}
         <div className={styles.sidebarBrand}>
           <div className={styles.logoWrapper}>
             <i className="fa-solid fa-mug-hot" style={{ color: "var(--enjoy-primary)", fontSize: "1.6rem" }}></i>
@@ -73,23 +73,25 @@ function Sidebar() {
           )}
         </div>
 
-        {/* Menu Items */}
-        <ul className={styles.sidebarMenu}>
-          {allowedMenus.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <li key={item.title} className={isActive ? styles.active : ""}>
-                <Link to={item.path} onClick={handleLinkClick}>
-                  <i className={`fa-solid ${item.icon}`}></i>
-                  {isExpanded && <span className={styles.menuText}>{item.title}</span>}
-                  {isActive && isExpanded && <span className={styles.activeIndicator}></span>}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        {/* Menu Container - Scrollable Area */}
+        <div className={styles.menuContainer}>
+          <ul className={styles.sidebarMenu}>
+            {allowedMenus.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <li key={item.title} className={isActive ? styles.active : ""}>
+                  <Link to={item.path} onClick={handleLinkClick}>
+                    <i className={`fa-solid ${item.icon}`}></i>
+                    {isExpanded && <span className={styles.menuText}>{item.title}</span>}
+                    {isActive && isExpanded && <span className={styles.activeIndicator}></span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
 
-        {/* Logout Button */}
+        {/* Logout Section - Fixed at Bottom */}
         <div className={styles.logoutSection}>
           <button 
             className={styles.logoutBtn}

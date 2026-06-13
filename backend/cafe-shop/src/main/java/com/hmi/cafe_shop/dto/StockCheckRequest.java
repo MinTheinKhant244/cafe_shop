@@ -11,8 +11,7 @@ public class StockCheckRequest {
     public static class OrderItemDto {
         private ProductDto product;
         private Integer quantity;
-    }
-    
+    }//    
     @Data
     public static class ProductDto {
         private Long id;

@@ -44,6 +44,10 @@
   overflow-x: auto;
   width: 100%;
   transition: all 0.3s ease;
+  /* Sticky elements အတွက် viewport height သတ်မှတ် */
+  height: 100vh;
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
 /* Mobile အတွက် mainContent padding */
@@ -53,7 +57,7 @@
   }
 }
 
-/* Header */
+/* Header - Sticky Version */
 .header {
   display: flex;
   justify-content: space-between;
@@ -64,6 +68,12 @@
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+  
+  /* Sticky Header */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(0px);
 }
 
 @media (max-width: 768px) {
@@ -134,7 +144,7 @@
   box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
 }
 
-/* Filter Section */
+/* Filter Section - Sticky Version */
 .filterSection {
   background: white;
   padding: 15px 20px;
@@ -144,6 +154,12 @@
   gap: 15px;
   flex-wrap: wrap;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  
+  /* Sticky Filter Section */
+  position: sticky;
+  top: 73px; /* Header ရဲ့အမြင့် (padding + margin) */
+  z-index: 99;
+  background: white;
 }
 
 .searchBox {
@@ -194,12 +210,20 @@
   }
 }
 
-/* Statistics Bar - Compact */
+/* Statistics Bar - Sticky Version */
 .statsBar {
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+  
+  /* Sticky Stats Bar */
+  position: sticky;
+  top: 138px; /* Header (73px) + Filter Section (65px) */
+  z-index: 98;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  padding: 8px 0;
+  margin-top: 0;
 }
 
 .statCard {
@@ -248,6 +272,7 @@
   background: white;
   border-radius: 12px;
   overflow-x: auto;
+  overflow-y: visible;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -680,6 +705,15 @@
     height: 24px;
     font-size: 0.7rem;
   }
+  
+  /* Responsive sticky top positions */
+  .filterSection {
+    top: 65px;
+  }
+  
+  .statsBar {
+    top: 125px;
+  }
 }
 
 /* Small Mobile */
@@ -701,6 +735,14 @@
   
   .descriptionText {
     max-width: 120px;
+  }
+  
+  .filterSection {
+    top: 60px;
+  }
+  
+  .statsBar {
+    top: 115px;
   }
 }
 

@@ -7,7 +7,7 @@ import {
 import { fetchAllCategories } from "../../features/categories/categorySlice";
 import Sidebar from "../../components/Sidebar";
 import styles from "../../assets/css/menuItem.module.css";
-
+ 
 function MenuItem() {
   const dispatch = useDispatch();
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);

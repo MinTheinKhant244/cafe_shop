@@ -32,7 +32,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/categories/all", "/api/categories/active").permitAll()
                 .requestMatchers("/api/inventory/**", "/api/recipes/**", "/api/products/**", "/api/categories/**", "/api/dashboard/**", "/api/users/**").hasRole("ADMIN")
                 .requestMatchers("/api/tables/**", "/api/recipes/**").hasAnyRole("ADMIN", "CASHIER")
-
+                .requestMatchers("/api/carts/**").permitAll()	
+                
                 // Authenticated Access
                 .requestMatchers("/api/orders/**", "/api/order-items/**", "/api/payments/**").authenticated()
                 .anyRequest().authenticated()

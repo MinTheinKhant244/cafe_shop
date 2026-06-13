@@ -2,7 +2,6 @@ package com.hmi.cafe_shop.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity

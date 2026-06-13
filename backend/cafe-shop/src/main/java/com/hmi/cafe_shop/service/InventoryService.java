@@ -1,13 +1,8 @@
 // InventoryService.java
 package com.hmi.cafe_shop.service;
 
-import com.hmi.cafe_shop.dto.InventoryPriceHistory;
-import com.hmi.cafe_shop.dto.InventoryTransaction;
-import com.hmi.cafe_shop.dto.ProductStockStatusDTO;
 import com.hmi.cafe_shop.entity.Inventory;
-import com.hmi.cafe_shop.entity.Order;
 import com.hmi.cafe_shop.entity.Product;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -19,15 +14,6 @@ public interface InventoryService {
     Inventory save(Inventory inventory);
     Inventory update(Long id, Inventory inventory);
     void delete(Long id);
-    ProductStockStatusDTO getProductStockStatus(Product product);
-    
-    // Stock Operations (Enhanced)
-    Inventory addStock(Long id, Double quantity, Double price, String invoiceNo, String notes, String performedBy);
-    Inventory removeStock(Long id, Double quantity, String transactionType, String referenceId, String notes, String performedBy);
-    Inventory adjustStock(Long id, Double newQuantity, String reason, String performedBy);
-    
-    // Stock Management (Legacy - keep for compatibility)
-    Inventory updateStock(Long id, Integer quantity);
     
     // Queries
     List<Inventory> getLowStockProducts();
@@ -37,8 +23,5 @@ public interface InventoryService {
     List<Inventory> getProductsBelowQuantity(Double threshold);
     
     // History & Reports
-    List<InventoryTransaction> getTransactionHistory(Long inventoryId);
-    List<InventoryPriceHistory> getPriceHistory(Long inventoryId);
-    Double getAveragePurchasePrice(Long inventoryId);
     Double getTotalStockValue();
 }

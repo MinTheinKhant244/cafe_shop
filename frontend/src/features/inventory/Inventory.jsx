@@ -6,13 +6,8 @@ import {
   addInventory,
   updateInventory,
   deleteInventory,
-  addStock,
-  removeStock,
-  getTransactionHistory,
-  getPriceHistory,
   getTotalStockValue,
   clearError,
-  setSelectedInventory
 } from "./inventorySlice";
 import Sidebar from "../../components/Sidebar";
 import styles from "../../assets/css/inventory.module.css";
@@ -25,7 +20,6 @@ function Inventory() {
     loading, 
     error: reduxError, 
     operationLoading,
-    transactions,
     totalStockValue
   } = useSelector((state) => state.inventory);
 
@@ -38,18 +32,8 @@ function Inventory() {
   
   // Modal States
   const [showModal, setShowModal] = useState(false);
-  const [showAddStockModal, setShowAddStockModal] = useState(false);
-  const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null);
-  
-  // Stock Form Data
-  const [stockData, setStockData] = useState({
-    quantity: "",
-    price: "",
-    notes: ""
-  });
   
   // Form Data
   const [formData, setFormData] = useState({
@@ -63,11 +47,7 @@ function Inventory() {
   
   const [notification, setNotification] = useState({ show: false, message: "", type: "" });
 
-  // Debug log
-  useEffect(() => {
-    console.log("Inventory state:", { inventory, loading, inventoryList });
-  }, [inventory, loading, inventoryList]);
-
+  // Load data on mount
   useEffect(() => {
     const loadData = async () => {
       await dispatch(fetchAllInventory());
@@ -145,37 +125,6 @@ function Inventory() {
     }
   };
 
-  const handleAddStock = async () => {
-    if (!selectedItem) return;
-    
-    if (!stockData.quantity || stockData.quantity <= 0) {
-      showNotification("Please enter valid quantity", "error");
-      return;
-    }
-    if (!stockData.price || stockData.price < 0) {
-      showNotification("Please enter valid price", "error");
-      return;
-    }
-    
-    try {
-      await dispatch(addStock({
-        id: selectedItem.id,
-        quantity: parseFloat(stockData.quantity),
-        price: parseFloat(stockData.price),
-        notes: stockData.notes
-      })).unwrap();
-      
-      showNotification(`Added ${stockData.quantity} ${selectedItem.unit || 'units'} to stock!`, "success");
-      setShowAddStockModal(false);
-      setStockData({ quantity: "", price: "", notes: "" });
-      setSelectedItem(null);
-      await dispatch(fetchAllInventory());
-      await dispatch(getTotalStockValue());
-    } catch (error) {
-      showNotification(error || "Failed to add stock!", "error");
-    }
-  };
-
   const handleDelete = async (item) => {
     if (window.confirm(`Are you sure you want to delete "${item.name}"?`)) {
       try {
@@ -187,12 +136,6 @@ function Inventory() {
         showNotification(error || "Failed to delete!", "error");
       }
     }
-  };
-
-  const handleViewTransactions = async (item) => {
-    setSelectedItem(item);
-    await dispatch(getTransactionHistory(item.id));
-    setShowTransactionModal(true);
   };
 
   const resetForm = () => {
@@ -208,6 +151,9 @@ function Inventory() {
 
   const getStockStatus = (item) => {
     const threshold = item.lowStockThreshold || 10;
+    if (item.quantity <= 0) {
+      return { text: "Out of Stock", class: styles.statusOut, icon: "❌" };
+    }
     if (item.quantity <= threshold) {
       return { text: "Low Stock", class: styles.statusLow, icon: "⚠️" };
     }
@@ -226,6 +172,7 @@ function Inventory() {
 
   const totalItems = inventory.length;
   const lowStockCount = inventory.filter(i => i.quantity <= (i.lowStockThreshold || 10)).length;
+  const outOfStockCount = inventory.filter(i => i.quantity <= 0).length;
   const totalUnits = inventory.reduce((sum, i) => sum + (i.quantity || 0), 0).toFixed(0);
 
   if (loading && inventory.length === 0) {
@@ -281,6 +228,10 @@ function Inventory() {
           <div className={styles.statCard}>
             <span className={styles.statValue}>{lowStockCount}</span>
             <span className={styles.statLabel}>Low Stock</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{outOfStockCount}</span>
+            <span className={styles.statLabel}>Out of Stock</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{totalUnits}</span>
@@ -353,7 +304,7 @@ function Inventory() {
                       </td>
                       <td>{item.unit || "-"}</td>
                       <td>
-                        <span className={styles.quantityText}>
+                        <span className={`${styles.quantityText} ${item.quantity <= (item.lowStockThreshold || 10) ? styles.lowQuantity : ""}`}>
                           {item.quantity} {item.unit}
                         </span>
                       </td>
@@ -396,24 +347,6 @@ function Inventory() {
                             title="Edit Item"
                           >
                             ✏️
-                          </button>
-                          <button
-                            className={styles.stockBtn}
-                            onClick={() => {
-                              setSelectedItem(item);
-                              setStockData({ quantity: "", price: "", notes: "" });
-                              setShowAddStockModal(true);
-                            }}
-                            title="Add Stock"
-                          >
-                            ➕
-                          </button>
-                          <button
-                            className={styles.historyBtn}
-                            onClick={() => handleViewTransactions(item)}
-                            title="View History"
-                          >
-                            📜
                           </button>
                           <button
                             className={styles.deleteBtn}
@@ -510,113 +443,6 @@ function Inventory() {
         </div>
       )}
 
-      {/* Add Stock Modal */}
-      {showAddStockModal && selectedItem && (
-        <div className={styles.modalOverlay} onClick={() => setShowAddStockModal(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3>➕ Add Stock - {selectedItem.name}</h3>
-              <button className={styles.modalClose} onClick={() => setShowAddStockModal(false)}>×</button>
-            </div>
-            <div className={styles.stockInfo}>
-              <p>Current Stock: <strong>{selectedItem.quantity} {selectedItem.unit || 'units'}</strong></p>
-              <p>Current Price: <strong>{(selectedItem.currentPrice || 0).toLocaleString()} Ks/{selectedItem.unit || 'unit'}</strong></p>
-            </div>
-            <div className={styles.formGroup}>
-              <label>Quantity to Add *</label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Enter quantity"
-                value={stockData.quantity}
-                onChange={(e) => setStockData({ ...stockData, quantity: e.target.value })}
-                autoFocus
-              />
-            </div>
-            <div className={styles.formGroup}>
-              <label>Purchase Price (Ks/{selectedItem.unit || 'unit'}) *</label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Enter purchase price"
-                value={stockData.price}
-                onChange={(e) => setStockData({ ...stockData, price: e.target.value })}
-              />
-            </div>
-            <div className={styles.formGroup}>
-              <label>Notes</label>
-              <textarea
-                rows="2"
-                placeholder="Optional notes"
-                value={stockData.notes}
-                onChange={(e) => setStockData({ ...stockData, notes: e.target.value })}
-              />
-            </div>
-            <div className={styles.modalFooter}>
-              <button className={styles.cancelBtn} onClick={() => setShowAddStockModal(false)}>
-                Cancel
-              </button>
-              <button className={styles.saveBtn} onClick={handleAddStock} disabled={operationLoading}>
-                {operationLoading ? "Adding..." : "Add Stock"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Transaction History Modal */}
-      {showTransactionModal && selectedItem && transactions && transactions[selectedItem.id] && (
-        <div className={styles.modalOverlay} onClick={() => setShowTransactionModal(false)}>
-          <div className={styles.detailModal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3>📜 Transaction History - {selectedItem.name}</h3>
-              <button className={styles.modalClose} onClick={() => setShowTransactionModal(false)}>×</button>
-            </div>
-            <div className={styles.transactionList}>
-              {transactions[selectedItem.id].length === 0 ? (
-                <div className={styles.emptyState}>No transactions found</div>
-              ) : (
-                <table className={styles.transactionTable}>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Type</th>
-                      <th>Change</th>
-                      <th>Old Qty</th>
-                      <th>New Qty</th>
-                      <th>Price</th>
-                      <th>Reference</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions[selectedItem.id].map((t, idx) => (
-                      <tr key={t.id || idx}>
-                        <td>{formatDate(t.transactionDate)}</td>
-                        <td>
-                          <span className={`${styles.transactionType} ${styles[t.transactionType?.toLowerCase()]}`}>
-                            {t.transactionType}
-                          </span>
-                        </td>
-                        <td className={t.quantityChange > 0 ? styles.positive : styles.negative}>
-                          {t.quantityChange > 0 ? `+${t.quantityChange}` : t.quantityChange}
-                        </td>
-                        <td>{t.oldQuantity}</td>
-                        <td>{t.newQuantity}</td>
-                        <td>{t.unitPrice?.toLocaleString()} Ks</td>
-                        <td>{t.referenceId || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            <div className={styles.modalFooter}>
-              <button className={styles.closeBtn} onClick={() => setShowTransactionModal(false)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Detail Modal */}
       {detailItem && (
         <div className={styles.modalOverlay} onClick={() => setDetailItem(null)}>
@@ -638,6 +464,7 @@ function Inventory() {
                     {getStockStatus(detailItem).icon} {getStockStatus(detailItem).text}
                   </span>
                 </p>
+                <p><strong>🕐 Created At:</strong> {formatDate(detailItem.createdAt)}</p>
                 <p><strong>🕐 Last Updated:</strong> {formatDate(detailItem.updatedAt)}</p>
                 <p><strong>🆔 ID:</strong> #{detailItem.id}</p>
               </div>
