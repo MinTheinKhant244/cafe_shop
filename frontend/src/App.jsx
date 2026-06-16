@@ -11,6 +11,8 @@ import PosSales from "./features/sales/PosSales.jsx"
 import ProtectedRoute from "./components/ProtectedRoute.jsx"
 import Inventory from "./features/inventory/Inventory.jsx"
 import Recipe from "./features/recipes/Recipe.jsx"
+import InventoryTransaction from "./features/inventory/InventoryTransaction.jsx"
+import CashierOrdersPage from "./features/cashier/CashierOrdersPage.jsx"
 
 function App() {
   return (
@@ -23,7 +25,7 @@ function App() {
       <Route
         path="/pos"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "CASHIER"]}>
+          <ProtectedRoute role="CASHIER">
             <PosSales />
           </ProtectedRoute>
         }
@@ -100,6 +102,24 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="admin/invTransactions"
+        element={
+          <ProtectedRoute role="ADMIN">
+            <InventoryTransaction />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Cashier Routes */}
+        <Route path="/cashier/orders" element={
+          <ProtectedRoute role="CASHIER">
+            <CashierOrdersPage />
+          </ProtectedRoute>
+        } />
+        
+      
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

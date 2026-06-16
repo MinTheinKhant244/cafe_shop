@@ -1,9 +1,12 @@
-// Inventory.java - Add price fields
 package com.hmi.cafe_shop.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "inventories")
@@ -28,15 +31,24 @@ public class Inventory {
 
     private Double lowStockThreshold;
     
-    // ✅ Add price fields
     @Column(nullable = false)
-    private Double currentPrice = 0.0; // လက်ရှိဝယ်ယူဈေး
+    private Double currentPrice = 0.0;
     
     @Column(nullable = false)
-    private String status = "ACTIVE"; // ACTIVE, DISCONTINUED
+    private String status = "ACTIVE"; // ACTIVE, INACTIVE, DISCONTINUED
 
     private LocalDateTime updatedAt;
     private LocalDateTime createdAt;
+    
+    @Column(name = "deactivated_at")
+    private LocalDateTime deactivatedAt;
+    
+    @Column(name = "deactivated_by")
+    private String deactivatedBy;
+    
+    @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<InventoryTransaction> transactions = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

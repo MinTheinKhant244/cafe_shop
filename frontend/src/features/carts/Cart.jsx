@@ -9,19 +9,54 @@ import {
   setTableId,
   validateCartStock,
   setLoading,
-  clearError,
+  clearError, 
   getAllCartProductsStock
 } from "./cartSlice";
 import api from "../../app/api";
 import styles from "../../assets/css/posSales.module.css";
 
-function Cart({ onOrderSuccess, onClose, selectedTableId }) {
+function Cart({ onOrderSuccess, onClose, selectedTableId, orderSource = "DINE_IN" }) {
   const dispatch = useDispatch();
   const { items, totalAmount, tableId, orderNote, error, loading, stockStatus } = useSelector(state => state.cart);
   const { user } = useSelector(state => state.auth);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [localTableId, setLocalTableId] = useState(null);
+  const [tableName, setTableName] = useState("");
+  const [allTables, setAllTables] = useState([]);
   
-  // 🔥 Refresh ALL product stocks when cart items change
+  // Fetch tables for display name
+  useEffect(() => {
+    const fetchTables = async () => {
+      try {
+        const response = await api.get("/tables/all");
+        setAllTables(response.data || []);
+      } catch (error) {
+        console.error("Failed to fetch tables", error);
+      }
+    };
+    fetchTables();
+  }, []);
+  
+  // Store selectedTableId from props to local state and get table name
+  useEffect(() => {
+    console.log("Cart received selectedTableId prop:", selectedTableId);
+    if (selectedTableId) {
+      setLocalTableId(selectedTableId);
+      dispatch(setTableId(selectedTableId));
+      
+      // Find table name from ID
+      const table = allTables.find(t => t.id === Number(selectedTableId));
+      if (table) {
+        setTableName(`Table ${table.tableNo}`);
+      } else {
+        setTableName(`Table ${selectedTableId}`);
+      }
+    } else {
+      setTableName("");
+    }
+  }, [selectedTableId, dispatch, allTables]);
+  
+  // Refresh ALL product stocks when cart items change
   useEffect(() => {
     if (items.length > 0) {
       const timeout = setTimeout(() => {
@@ -29,7 +64,7 @@ function Cart({ onOrderSuccess, onClose, selectedTableId }) {
       }, 300);
       return () => clearTimeout(timeout);
     }
-  }, [items.map(i => `${i.id}-${i.quantity}`).join()]);
+  }, [items.map(i => `${i.id}-${i.quantity}`).join(), dispatch]);
   
   // Get stock warning for an item
   const getStockWarning = (item) => {
@@ -48,24 +83,36 @@ function Cart({ onOrderSuccess, onClose, selectedTableId }) {
     return item.quantity < maxStock && !stock?.isOutOfStock;
   };
   
-  // Place order
+  // ========== FIXED: Place order with correct JSON structure ==========
   const handlePlaceOrder = async () => {
+    console.log("=== CART PLACE ORDER DEBUG ===");
+    console.log("items length:", items.length);
+    console.log("selectedTableId from props:", selectedTableId);
+    console.log("localTableId from state:", localTableId);
+    console.log("tableId from Redux:", tableId);
+    console.log("orderSource:", orderSource);
+    
     if (items.length === 0) {
       alert("Cart is empty!");
       return;
     }
     
-    const currentTableId = selectedTableId || tableId;
-    if (!currentTableId) {
-      alert("Please select a table");
-      return;
+    // ✅ Table is only required for DINE_IN
+    if (orderSource === "DINE_IN") {
+      const currentTableId = localTableId || selectedTableId || tableId;
+      console.log("currentTableId to use:", currentTableId);
+      
+      if (!currentTableId) {
+        alert("Please select a table for DINE_IN orders");
+        return;
+      }
     }
     
     setIsProcessing(true);
     dispatch(setLoading(true));
     
     try {
-      // Final stock validation before order
+      // Validate stock
       const validationResult = await dispatch(validateCartStock()).unwrap();
       
       if (!validationResult.isValid) {
@@ -75,27 +122,32 @@ function Cart({ onOrderSuccess, onClose, selectedTableId }) {
         return;
       }
       
-      // Create order
+      // ✅ Build order data based on order source
+      const currentTableId = localTableId || selectedTableId || tableId;
+      
       const orderData = {
-        createdBy: { id: user?.id || 1 },
-        table: { id: currentTableId },
+        createdBy: user?.id || 1,
+        tableId: orderSource === "DINE_IN" ? Number(currentTableId) : null,
         totalAmount: totalAmount,
-        paymentStatus: "UNPAID",
-        orderSource: "DINE_IN",
-        status: "PENDING",
+        paymentStatus: "PENDING",
+        orderSource: orderSource,
+        status: "PREPARING",
         orderItems: items.map(item => ({
-          product: { id: item.id },
+          productId: item.id,
           quantity: item.quantity,
-          price: item.price,
-          note: item.note
+          price: item.price
         })),
-        orderNote: orderNote
+        orderNote: orderNote || null
       };
       
-      const response = await api.post("/orders/create", orderData);
-      const result = response.data;
+      console.log("Sending order from Cart:", JSON.stringify(orderData, null, 2));
       
-      // Clear cart after successful order
+      // Use the createOrder thunk from orderSlice
+      const { createOrder } = await import("../../features/orders/orderSlice");
+      const result = await dispatch(createOrder(orderData)).unwrap();
+      
+      console.log("Order created:", result);
+      
       dispatch(clearCart());
       
       if (onOrderSuccess) {
@@ -110,7 +162,8 @@ function Cart({ onOrderSuccess, onClose, selectedTableId }) {
       
     } catch (error) {
       console.error("Order failed:", error);
-      alert("Order failed: " + (error.response?.data?.message || error.message));
+      const errorMessage = error.response?.data?.message || error.message || "Unknown error";
+      alert("Order failed: " + errorMessage);
     } finally {
       setIsProcessing(false);
       dispatch(setLoading(false));
@@ -154,6 +207,17 @@ function Cart({ onOrderSuccess, onClose, selectedTableId }) {
         </button>
       </div>
       
+      {/* ✅ Show order type and table info */}
+      <div className={styles.orderTypeInfo}>
+        <span className={styles.orderTypeBadge}>
+          {orderSource === "DINE_IN" ? "🍽️ Dine In" : 
+           orderSource === "TAKEAWAY" ? "📦 Takeaway" : "🚚 Delivery"}
+        </span>
+        {orderSource === "DINE_IN" && tableName && (
+          <span className={styles.tableInfo}>📍 {tableName}</span>
+        )}
+      </div>
+      
       {error && (
         <div className={styles.errorMessage}>
           ⚠️ {error}
@@ -181,9 +245,6 @@ function Cart({ onOrderSuccess, onClose, selectedTableId }) {
                 <span className={styles.cartItemPrice}>{item.price?.toLocaleString()} Ks</span>
                 {stockWarning && (
                   <div className={styles.stockWarning}>{stockWarning}</div>
-                )}
-                {item.note && (
-                  <div className={styles.itemNote}>📝 {item.note}</div>
                 )}
               </div>
               <div className={styles.cartItemActions}>

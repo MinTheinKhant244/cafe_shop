@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { toggleSidebar } from "../../app/uiSlice";
 import {
   fetchAllInventory,
   addInventory,
   updateInventory,
   deleteInventory,
+  activateInventory,
+  deactivateInventory,
   getTotalStockValue,
   clearError,
 } from "./inventorySlice";
@@ -14,6 +17,7 @@ import styles from "../../assets/css/inventory.module.css";
 
 function Inventory() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
   const { 
     list: inventoryList, 
@@ -29,6 +33,7 @@ function Inventory() {
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStock, setFilterStock] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   
   // Modal States
   const [showModal, setShowModal] = useState(false);
@@ -40,7 +45,6 @@ function Inventory() {
     id: null,
     name: "",
     unit: "",
-    quantity: "",
     lowStockThreshold: "",
     currentPrice: ""
   });
@@ -70,23 +74,27 @@ function Inventory() {
     }
   }, [reduxError, dispatch]);
 
-  // Filter inventory based on search and stock status
+  // Filter inventory based on search, stock status, and active status
   const filteredInventory = inventory.filter((item) => {
     const matchesSearch = item.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStock = filterStock === "all" ||
       (filterStock === "low" && item.quantity <= (item.lowStockThreshold || 10)) ||
       (filterStock === "normal" && item.quantity > (item.lowStockThreshold || 10));
-    return matchesSearch && matchesStock;
+    const matchesStatus = filterStatus === "all" ||
+      (filterStatus === "active" && item.status === "ACTIVE") ||
+      (filterStatus === "inactive" && item.status === "INACTIVE");
+    return matchesSearch && matchesStock && matchesStatus;
   });
 
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm("");
     setFilterStock("all");
+    setFilterStatus("all");
   };
 
   // Check if any filter is active
-  const isFilterActive = searchTerm !== "" || filterStock !== "all";
+  const isFilterActive = searchTerm !== "" || filterStock !== "all" || filterStatus !== "all";
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -95,38 +103,80 @@ function Inventory() {
       showNotification("Item name is required!", "error");
       return;
     }
-    if (!formData.quantity || formData.quantity < 0) {
-      showNotification("Valid quantity is required!", "error");
-      return;
-    }
     
-    const data = {
-      name: formData.name,
-      unit: formData.unit,
-      quantity: parseFloat(formData.quantity),
-      lowStockThreshold: formData.lowStockThreshold ? parseFloat(formData.lowStockThreshold) : 10,
-      currentPrice: formData.currentPrice ? parseFloat(formData.currentPrice) : 0
-    };
-    
-    try {
-      if (isEditing) {
+    if (isEditing) {
+      const data = {
+        name: formData.name,
+        unit: formData.unit,
+        lowStockThreshold: formData.lowStockThreshold ? parseFloat(formData.lowStockThreshold) : 10,
+        currentPrice: formData.currentPrice ? parseFloat(formData.currentPrice) : 0
+      };
+      
+      try {
         await dispatch(updateInventory({ id: formData.id, data })).unwrap();
         showNotification("Inventory updated successfully!", "success");
-      } else {
-        await dispatch(addInventory(data)).unwrap();
-        showNotification("Inventory added successfully!", "success");
+        setShowModal(false);
+        resetForm();
+        await dispatch(fetchAllInventory());
+        await dispatch(getTotalStockValue());
+      } catch (error) {
+        showNotification(error || "Error updating inventory!", "error");
       }
-      setShowModal(false);
-      resetForm();
-      await dispatch(fetchAllInventory());
-      await dispatch(getTotalStockValue());
-    } catch (error) {
-      showNotification(error || "Error saving inventory!", "error");
+    } else {
+      const data = {
+        name: formData.name,
+        unit: formData.unit,
+        lowStockThreshold: formData.lowStockThreshold ? parseFloat(formData.lowStockThreshold) : 10,
+        currentPrice: formData.currentPrice ? parseFloat(formData.currentPrice) : 0
+      };
+      
+      try {
+        const result = await dispatch(addInventory(data)).unwrap();
+        showNotification("Inventory item created successfully!", "success");
+        setShowModal(false);
+        resetForm();
+        await dispatch(fetchAllInventory());
+        await dispatch(getTotalStockValue());
+        
+        if (window.confirm(`Would you like to add initial stock for "${formData.name}" now?`)) {
+          navigate(`/admin/invTransactions?itemId=${result.id}`);
+        }
+      } catch (error) {
+        showNotification(error || "Error adding inventory!", "error");
+      }
+    }
+  };
+
+  // Handle Deactivate
+  const handleDeactivate = async (item) => {
+    if (window.confirm(`Are you sure you want to deactivate "${item.name}"?`)) {
+      try {
+        await dispatch(deactivateInventory(item.id)).unwrap();
+        showNotification(`"${item.name}" deactivated successfully!`, "success");
+        await dispatch(fetchAllInventory());
+        await dispatch(getTotalStockValue());
+      } catch (error) {
+        showNotification(error || "Failed to deactivate!", "error");
+      }
+    }
+  };
+
+  // Handle Activate
+  const handleActivate = async (item) => {
+    if (window.confirm(`Are you sure you want to activate "${item.name}"?`)) {
+      try {
+        await dispatch(activateInventory(item.id)).unwrap();
+        showNotification(`"${item.name}" activated successfully!`, "success");
+        await dispatch(fetchAllInventory());
+        await dispatch(getTotalStockValue());
+      } catch (error) {
+        showNotification(error || "Failed to activate!", "error");
+      }
     }
   };
 
   const handleDelete = async (item) => {
-    if (window.confirm(`Are you sure you want to delete "${item.name}"?`)) {
+    if (window.confirm(`Are you sure you want to permanently delete "${item.name}"? This action cannot be undone.`)) {
       try {
         await dispatch(deleteInventory(item.id)).unwrap();
         showNotification(`"${item.name}" deleted successfully!`, "success");
@@ -143,7 +193,6 @@ function Inventory() {
       id: null,
       name: "",
       unit: "",
-      quantity: "",
       lowStockThreshold: "",
       currentPrice: ""
     });
@@ -171,9 +220,12 @@ function Inventory() {
   };
 
   const totalItems = inventory.length;
+  const activeCount = inventory.filter(i => i.status === "ACTIVE").length;
+  const inactiveCount = inventory.filter(i => i.status === "INACTIVE").length;
   const lowStockCount = inventory.filter(i => i.quantity <= (i.lowStockThreshold || 10)).length;
   const outOfStockCount = inventory.filter(i => i.quantity <= 0).length;
   const totalUnits = inventory.reduce((sum, i) => sum + (i.quantity || 0), 0).toFixed(0);
+  const zeroStockCount = inventory.filter(i => i.quantity === 0).length;
 
   if (loading && inventory.length === 0) {
     return (
@@ -226,12 +278,20 @@ function Inventory() {
             <span className={styles.statLabel}>Total Items</span>
           </div>
           <div className={styles.statCard}>
-            <span className={styles.statValue}>{lowStockCount}</span>
-            <span className={styles.statLabel}>Low Stock</span>
+            <span className={styles.statValue}>{activeCount}</span>
+            <span className={styles.statLabel}>Active</span>
           </div>
           <div className={styles.statCard}>
-            <span className={styles.statValue}>{outOfStockCount}</span>
-            <span className={styles.statLabel}>Out of Stock</span>
+            <span className={styles.statValue}>{inactiveCount}</span>
+            <span className={styles.statLabel}>Inactive</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{zeroStockCount}</span>
+            <span className={styles.statLabel}>Zero Stock</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{lowStockCount}</span>
+            <span className={styles.statLabel}>Low Stock</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{totalUnits}</span>
@@ -260,6 +320,11 @@ function Inventory() {
               <option value="all">📊 All Stock</option>
               <option value="low">⚠️ Low Stock</option>
               <option value="normal">✅ Normal Stock</option>
+            </select>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">🔄 All Status</option>
+              <option value="active">✅ Active</option>
+              <option value="inactive">🔴 Inactive</option>
             </select>
             {isFilterActive && (
               <button className={styles.clearFiltersBtn} onClick={clearFilters}>
@@ -290,6 +355,7 @@ function Inventory() {
                   <th>Unit Price</th>
                   <th>Total Value</th>
                   <th>Status</th>
+                  <th>Stock Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -297,6 +363,8 @@ function Inventory() {
                 {filteredInventory.map((item) => {
                   const stockStatus = getStockStatus(item);
                   const totalValue = (item.quantity || 0) * (item.currentPrice || 0);
+                  const isActive = item.status === "ACTIVE";
+                  
                   return (
                     <tr key={item.id}>
                       <td>
@@ -307,20 +375,28 @@ function Inventory() {
                         <span className={`${styles.quantityText} ${item.quantity <= (item.lowStockThreshold || 10) ? styles.lowQuantity : ""}`}>
                           {item.quantity} {item.unit}
                         </span>
-                      </td>
+                        {item.quantity === 0 && isActive && (
+                          <button 
+                            className={styles.addStockBtn}
+                            onClick={() => navigate(`/admin/invTransactions?itemId=${item.id}`)}
+                            title="Add Stock"
+                          >
+                            +
+                          </button>
+                        )}
+                       </td>
+                      <td>{(item.currentPrice || 0).toLocaleString()} Ks</td>
+                      <td><span className={styles.costText}>{totalValue.toLocaleString()} Ks</span></td>
                       <td>
-                        {(item.currentPrice || 0).toLocaleString()} Ks
-                      </td>
-                      <td>
-                        <span className={styles.costText}>
-                          {totalValue.toLocaleString()} Ks
+                        <span className={`${styles.statusBadge} ${isActive ? styles.statusActive : styles.statusInactive}`}>
+                          {isActive ? "🟢 Active" : "🔴 Inactive"}
                         </span>
-                      </td>
+                       </td>
                       <td>
                         <span className={`${styles.statusBadge} ${stockStatus.class}`}>
                           {stockStatus.icon} {stockStatus.text}
                         </span>
-                      </td>
+                       </td>
                       <td>
                         <div className={styles.actionButtons}>
                           <button
@@ -331,13 +407,19 @@ function Inventory() {
                             👁️
                           </button>
                           <button
+                            className={styles.stockBtn}
+                            onClick={() => navigate(`/admin/invTransactions?itemId=${item.id}`)}
+                            title="Stock Transactions"
+                          >
+                            📊
+                          </button>
+                          <button
                             className={styles.editBtn}
                             onClick={() => {
                               setFormData({
                                 id: item.id,
                                 name: item.name,
                                 unit: item.unit || "",
-                                quantity: item.quantity,
                                 lowStockThreshold: item.lowStockThreshold || "",
                                 currentPrice: item.currentPrice || ""
                               });
@@ -348,6 +430,14 @@ function Inventory() {
                           >
                             ✏️
                           </button>
+                          {/* Activate/Deactivate Button - Same style as User.jsx */}
+                          <button 
+                            className={isActive ? styles.deactivateBtn : styles.activateBtn} 
+                            onClick={() => isActive ? handleDeactivate(item) : handleActivate(item)}
+                            title={isActive ? "Deactivate" : "Activate"}
+                          >
+                            {isActive ? "🔴" : "🟢"}
+                          </button>
                           <button
                             className={styles.deleteBtn}
                             onClick={() => handleDelete(item)}
@@ -356,8 +446,8 @@ function Inventory() {
                             🗑️
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                       </td>
+                     </tr>
                   );
                 })}
               </tbody>
@@ -374,6 +464,12 @@ function Inventory() {
               <h3>{isEditing ? "✏️ Edit Item" : "➕ Add New Item"}</h3>
               <button className={styles.modalClose} onClick={() => setShowModal(false)}>×</button>
             </div>
+            
+            <div className={styles.infoBanner}>
+              💡 <strong>Note:</strong> Stock quantity will be managed through 
+              <strong> Stock Transactions</strong>. Please add initial stock after creating the item.
+            </div>
+            
             <form onSubmit={handleSave}>
               <div className={styles.formGroup}>
                 <label>Item Name *</label>
@@ -385,6 +481,7 @@ function Inventory() {
                   required
                 />
               </div>
+              
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label>Unit</label>
@@ -394,19 +491,26 @@ function Inventory() {
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                   />
+                  <small className={styles.hintText}>Measurement unit for this item</small>
                 </div>
-                <div className={styles.formGroup}>
-                  <label>Initial Quantity *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="Enter quantity"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                    required
-                  />
-                </div>
+                
+                {isEditing && (
+                  <div className={styles.formGroup}>
+                    <label>Current Stock</label>
+                    <input
+                      type="text"
+                      value={`${(() => {
+                        const item = inventory.find(i => i.id === formData.id);
+                        return item ? `${item.quantity} ${item.unit || ''}` : 'Loading...';
+                      })()}`}
+                      disabled
+                      className={styles.disabledField}
+                    />
+                    <small className={styles.hintText}>💡 Update stock via Transactions page</small>
+                  </div>
+                )}
               </div>
+              
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label>Unit Price (Ks) *</label>
@@ -418,7 +522,9 @@ function Inventory() {
                     onChange={(e) => setFormData({ ...formData, currentPrice: e.target.value })}
                     required
                   />
+                  <small className={styles.hintText}>Current selling/purchase price</small>
                 </div>
+                
                 <div className={styles.formGroup}>
                   <label>Low Stock Threshold</label>
                   <input
@@ -428,14 +534,16 @@ function Inventory() {
                     value={formData.lowStockThreshold}
                     onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
                   />
+                  <small className={styles.hintText}>Default: 10</small>
                 </div>
               </div>
+              
               <div className={styles.modalFooter}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>
                   Cancel
                 </button>
                 <button type="submit" className={styles.saveBtn} disabled={operationLoading}>
-                  {operationLoading ? "Saving..." : (isEditing ? "Update Item" : "Add Item")}
+                  {operationLoading ? "Saving..." : (isEditing ? "Update Item" : "Create Item")}
                 </button>
               </div>
             </form>
@@ -459,17 +567,48 @@ function Inventory() {
                 <p><strong>💰 Unit Price:</strong> {(detailItem.currentPrice || 0).toLocaleString()} Ks</p>
                 <p><strong>💵 Total Value:</strong> {((detailItem.quantity || 0) * (detailItem.currentPrice || 0)).toLocaleString()} Ks</p>
                 <p><strong>⚠️ Low Stock Threshold:</strong> {detailItem.lowStockThreshold || 10} {detailItem.unit}</p>
-                <p><strong>✅ Status:</strong>
+                <p><strong>📋 Status:</strong>
+                  <span className={`${styles.statusBadge} ${detailItem.status === "ACTIVE" ? styles.statusActive : styles.statusInactive}`}>
+                    {detailItem.status === "ACTIVE" ? "🟢 Active" : "🔴 Inactive"}
+                  </span>
+                </p>
+                <p><strong>✅ Stock Status:</strong>
                   <span className={`${styles.statusBadge} ${getStockStatus(detailItem).class}`}>
                     {getStockStatus(detailItem).icon} {getStockStatus(detailItem).text}
                   </span>
                 </p>
                 <p><strong>🕐 Created At:</strong> {formatDate(detailItem.createdAt)}</p>
                 <p><strong>🕐 Last Updated:</strong> {formatDate(detailItem.updatedAt)}</p>
+                {detailItem.deactivatedAt && (
+                  <p><strong>🔘 Deactivated At:</strong> {formatDate(detailItem.deactivatedAt)}</p>
+                )}
+                {detailItem.deactivatedBy && (
+                  <p><strong>👤 Deactivated By:</strong> {detailItem.deactivatedBy}</p>
+                )}
                 <p><strong>🆔 ID:</strong> #{detailItem.id}</p>
               </div>
             </div>
             <div className={styles.modalFooter}>
+              <button 
+                className={styles.transactionBtn}
+                onClick={() => {
+                  navigate(`/admin/invTransactions?itemId=${detailItem.id}`);
+                  setDetailItem(null);
+                }}
+              >
+                📊 View Transactions
+              </button>
+              {detailItem.quantity === 0 && detailItem.status === "ACTIVE" && (
+                <button 
+                  className={styles.addStockBtn}
+                  onClick={() => {
+                    navigate(`/admin/invTransactions?itemId=${detailItem.id}`);
+                    setDetailItem(null);
+                  }}
+                >
+                  ➕ Add Stock
+                </button>
+              )}
               <button className={styles.closeBtn} onClick={() => setDetailItem(null)}>Close</button>
             </div>
           </div>

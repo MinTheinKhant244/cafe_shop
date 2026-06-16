@@ -36,7 +36,6 @@ export const createOrder = createAsyncThunk(
   }
 );
 
-// ⭐ NEW: Deduct Stock for Order
 export const deductStockForOrder = createAsyncThunk(
   "orders/deductStock",
   async (orderId, thunkAPI) => {

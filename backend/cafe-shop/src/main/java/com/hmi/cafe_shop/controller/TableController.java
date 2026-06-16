@@ -22,9 +22,13 @@ public class TableController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> create(@RequestBody TableEntity table) {
+    public ResponseEntity<?> createTable(@RequestBody TableEntity table) {
         try {
-            return ResponseEntity.ok(tableService.createTable(table));
+            TableEntity newTable = tableService.createTable(table);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Table created successfully");
+            response.put("table", newTable);
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());

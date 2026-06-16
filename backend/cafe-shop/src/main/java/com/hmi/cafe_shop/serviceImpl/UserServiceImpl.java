@@ -44,6 +44,7 @@ public class UserServiceImpl implements UserService {
         oldUser.setName(user.getName());
         oldUser.setRole(user.getRole());
         oldUser.setIsActive(user.getIsActive());
+        oldUser.setEmail(user.getEmail());
         
         if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
             oldUser.setPassword(passwordEncoder.encode(user.getPassword()));
@@ -131,4 +132,6 @@ public class UserServiceImpl implements UserService {
         user.setResetTokenExpiry(null);
         userRepository.save(user);
     }
+    
+    
 }

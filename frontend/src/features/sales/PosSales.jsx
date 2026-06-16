@@ -5,14 +5,13 @@ import { fetchAllCategories } from "../../features/categories/categorySlice";
 import { createOrder, updatePaymentStatus, fetchAllOrders } from "../../features/orders/orderSlice";
 import { clearCart } from "../carts/cartSlice";
 import { toggleSidebar } from "../../app/uiSlice";
-import { getAllCartProductsStock, getMultipleProductsStock } from "../carts/cartSlice"; // 🔥 ADD THIS IMPORT
 import api from "../../app/api";
 import Sidebar from "../../components/Sidebar";
 import ProductCard from "./ProductCard";
 import Cart from "../carts/Cart";
 import styles from "../../assets/css/posSales.module.css";
 
-function PosSales() {
+function PosSales() { 
   const dispatch = useDispatch();
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
   const { list: products, loading: productsLoading } = useSelector((state) => state.products);
@@ -33,22 +32,32 @@ function PosSales() {
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
   const [pendingOrders, setPendingOrders] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // 🔥 Refresh button state
-  const [isRefreshingStock, setIsRefreshingStock] = useState(false);
+  // ✅ Add order source state
+  const [orderSource, setOrderSource] = useState("DINE_IN");
+  
+  // Cart sidebar visibility state (default: open on desktop)
+  const [isCartOpen, setIsCartOpen] = useState(true);
 
   // Initial data loading
   useEffect(() => {
-    dispatch(fetchAllProducts());
-    dispatch(fetchAllCategories());
-    dispatch(fetchAllOrders());
-    fetchTables();
+    loadInitialData();
   }, [dispatch]);
+
+  const loadInitialData = async () => {
+    await Promise.all([
+      dispatch(fetchAllProducts()),
+      dispatch(fetchAllCategories()),
+      dispatch(fetchAllOrders()),
+      fetchTables()
+    ]);
+  };
 
   // Track pending orders
   useEffect(() => {
     if (orders?.length) {
-      const unpaid = orders.filter(o => o.paymentStatus === "UNPAID" && o.status !== "CANCELLED");
+      const unpaid = orders.filter(o => o.paymentStatus === "PENDING" && o.status !== "CANCELLED");
       setPendingOrders(unpaid);
     }
   }, [orders]);
@@ -56,37 +65,30 @@ function PosSales() {
   const fetchTables = async () => {
     try {
       const response = await api.get("/tables/all");
-      setTables(response.data);
+      console.log("Tables loaded:", response.data);
+      setTables(response.data || []);
     } catch (error) {
       console.error("Failed to fetch tables", error);
       setTables([]);
     }
   };
 
-  // 🔥 Refresh all product stocks manually
-  const handleRefreshAllStocks = async () => {
-    setIsRefreshingStock(true);
-    
+  // Refresh handler - re-fetches all data to get latest stock status
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      // Get all active product IDs
-      const activeProductIds = products?.filter(p => p.isActive).map(p => p.id) || [];
-      
-      if (activeProductIds.length > 0) {
-        await dispatch(getMultipleProductsStock({ productIds: activeProductIds })).unwrap();
-      }
-      
-      // If cart has items, also refresh cart products stock
-      if (items.length > 0) {
-        await dispatch(getAllCartProductsStock()).unwrap();
-      }
-      
-      alert(`✅ Stock refreshed! ${activeProductIds.length} products updated.`);
-      
+      await Promise.all([
+        dispatch(fetchAllProducts()).unwrap(),
+        dispatch(fetchAllCategories()).unwrap(),
+        dispatch(fetchAllOrders()).unwrap(),
+        fetchTables()
+      ]);
+      console.log("Data refreshed successfully - stock status updated");
     } catch (error) {
       console.error("Refresh failed:", error);
-      alert("❌ Failed to refresh stock. Please try again.");
+      alert("Failed to refresh data. Please try again.");
     } finally {
-      setIsRefreshingStock(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -96,39 +98,66 @@ function PosSales() {
     return matchesCategory && matchesSearch && p.isActive;
   });
 
+  // Handle table selection
+  const handleTableChange = (e) => {
+    const value = e.target.value;
+    console.log("Table selected - value:", value);
+    if (value === "" || value === null) {
+      setSelectedTableId(null);
+    } else {
+      setSelectedTableId(Number(value));
+    }
+  };
+
+  // ========== FIXED: Place Order with correct JSON structure ==========
   const handlePlaceOrder = async () => {
+    console.log("=== ORDER DEBUG ===");
+    console.log("orderSource:", orderSource);
+    console.log("selectedTableId:", selectedTableId);
+    console.log("items length:", items.length);
+    
     if (items.length === 0) {
       alert("Please add items to cart");
       return;
     }
-    if (!selectedTableId) {
-      alert("Please select a table");
+    
+    // ✅ Table is only required for DINE_IN
+    if (orderSource === "DINE_IN" && !selectedTableId) {
+      alert("Please select a table for DINE_IN orders");
       return;
     }
     
     setLoading(true);
     
     try {
+      // ✅ Build order data based on order source
       const orderData = {
-        createdBy: { id: user?.id || 1 },
-        table: { id: selectedTableId },
+        createdBy: user?.id || 1,
+        tableId: orderSource === "DINE_IN" ? selectedTableId : null, // ✅ null for TAKEAWAY/DELIVERY
         totalAmount: totalAmount,
-        paymentStatus: "UNPAID",
-        orderSource: "DINE_IN",
-        status: "PENDING",
+        paymentStatus: "PENDING",
+        orderSource: orderSource, // ✅ DINE_IN, TAKEAWAY, DELIVERY
+        status: "PREPARING",
         orderItems: items.map(item => ({
-          product: { id: item.id },
+          productId: item.id,
           quantity: item.quantity,
           price: item.price
-        }))
+        })),
+        orderNote: null
       };
 
+      console.log("Order data being sent:", orderData);
+      
       const result = await dispatch(createOrder(orderData)).unwrap();
+      
+      console.log("Order created successfully:", result);
+      
       setOrderSuccess(result);
       dispatch(clearCart());
       setSelectedTableId(null);
       setIsMobileCartOpen(false);
-      dispatch(fetchAllOrders());
+      await dispatch(fetchAllOrders());
+      await fetchTables(); // Refresh tables to update availability
       
     } catch (error) {
       console.error("Order error:", error);
@@ -159,7 +188,8 @@ function PosSales() {
       setShowPaymentModal(false);
       setSelectedOrderForPayment(null);
       setCashReceived("");
-      dispatch(fetchAllOrders());
+      await dispatch(fetchAllOrders());
+      await fetchTables(); // Refresh tables after payment
       alert(`Payment for ${selectedOrderForPayment.invoiceNo} completed successfully!`);
     } catch (error) {
       alert("Payment failed: " + (error?.message || "Unknown error"));
@@ -179,6 +209,10 @@ function PosSales() {
     setIsMobileCartOpen(!isMobileCartOpen);
   };
 
+  const toggleCart = () => {
+    setIsCartOpen(!isCartOpen);
+  };
+
   const totalItemsInCart = items.reduce((sum, i) => sum + i.quantity, 0);
 
   return (
@@ -195,26 +229,71 @@ function PosSales() {
             <h1 className={styles.pageTitle}>POS Sales</h1>
           </div>
           <div className={styles.headerRight}>
-            {/* 🔥 Refresh Button */}
+            {/* Refresh Button */}
             <button 
               className={styles.refreshBtn} 
-              onClick={handleRefreshAllStocks}
-              disabled={isRefreshingStock || productsLoading}
-              title="Refresh product stocks"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Refresh Menu & Stock Status"
             >
-              {isRefreshingStock ? "🔄 Refreshing..." : "🔄 Refresh"}
+              {isRefreshing ? "⏳" : "🔄"} Refresh
             </button>
             
+            {/* ✅ Order Source Selection */}
             <select 
-              className={styles.tableSelect}
-              value={selectedTableId || ""}
-              onChange={(e) => setSelectedTableId(Number(e.target.value))}
+              className={styles.orderSourceSelect}
+              value={orderSource}
+              onChange={(e) => {
+                setOrderSource(e.target.value);
+                // ✅ Reset table selection when switching to TAKEAWAY/DELIVERY
+                if (e.target.value !== "DINE_IN") {
+                  setSelectedTableId(null);
+                }
+              }}
             >
-              <option value="">-- Select Table --</option>
-              {tables.filter(t => t.status === "AVAILABLE" && !t.parentTableId).map(t => (
-                <option key={t.id} value={t.id}>Table {t.tableNo}</option>
-              ))}
+              <option value="DINE_IN">🍽️ Dine In</option>
+              <option value="TAKEAWAY">📦 Takeaway</option>
+              <option value="DELIVERY">🚚 Delivery</option>
             </select>
+            
+            {/* ✅ Table Selection - Show ONLY for DINE_IN */}
+            {orderSource === "DINE_IN" && (
+              <select 
+                className={styles.tableSelect}
+                value={selectedTableId === null ? "" : selectedTableId}
+                onChange={handleTableChange}
+                style={{ border: !selectedTableId && items.length > 0 ? '2px solid red' : '1px solid #ddd' }}
+              >
+                <option value="">-- Select Table --</option>
+                {tables && tables.length > 0 ? (
+                  tables
+                    .filter(t => t.status === "AVAILABLE" && !t.parentTableId)
+                    .map(t => (
+                      <option key={t.id} value={t.id}>Table {t.tableNo}</option>
+                    ))
+                ) : (
+                  <option disabled>No tables available</option>
+                )}
+              </select>
+            )}
+            
+            {/* ✅ Show order type badge for TAKEAWAY/DELIVERY */}
+            {orderSource !== "DINE_IN" && (
+              <span className={styles.orderTypeBadge}>
+                {orderSource === "TAKEAWAY" ? "📦 Takeaway" : "🚚 Delivery"}
+              </span>
+            )}
+            
+            {/* Toggle Cart Button - Desktop */}
+            <button 
+              className={styles.toggleCartBtn} 
+              onClick={toggleCart}
+              title={isCartOpen ? "Hide Cart" : "Show Cart"}
+            >
+              {isCartOpen ? "▶️ Hide Cart" : "◀️ Show Cart"}
+            </button>
+            
+            {/* Mobile cart toggle */}
             <button className={styles.mobileCartToggle} onClick={toggleMobileCart}>
               🛒 ({totalItemsInCart})
             </button>
@@ -222,7 +301,7 @@ function PosSales() {
         </div>
 
         {/* Scrollable Content Area */}
-        <div className={styles.scrollableContent}>
+        <div className={`${styles.scrollableContent} ${!isCartOpen ? styles.expandedContent : ""}`}>
           {/* Pending Orders Section */}
           {pendingOrders.length > 0 && (
             <div className={styles.pendingOrdersSection}>
@@ -235,7 +314,11 @@ function PosSales() {
                   <div key={order.id} className={styles.pendingOrderCard}>
                     <div className={styles.pendingOrderInfo}>
                       <span className={styles.invoiceNo}>#{order.invoiceNo}</span>
-                      <span className={styles.tableNo}>Table {order.table?.tableNo}</span>
+                      <span className={styles.tableNo}>
+                        {order.orderSource === "DINE_IN" 
+                          ? `Table ${order.table?.tableNo}` 
+                          : order.orderSource}
+                      </span>
                       <span className={styles.amount}>{order.totalAmount?.toLocaleString()} Ks</span>
                       <span className={`${styles.status} ${styles[order.status?.toLowerCase()]}`}>
                         {order.status}
@@ -280,7 +363,7 @@ function PosSales() {
 
           {/* Products Grid - Scrollable */}
           <div className={styles.productsGrid}>
-            {productsLoading ? (
+            {productsLoading || isRefreshing ? (
               <div className={styles.loading}>Loading menu...</div>
             ) : filteredProducts?.length === 0 ? (
               <div className={styles.emptyProducts}>
@@ -294,22 +377,39 @@ function PosSales() {
         </div>
       </div>
 
-      {/* Cart Sidebar */}
-      <div className={`${styles.Cart} ${isMobileCartOpen ? styles.mobileOpen : ""}`}>
-        <div className={styles.mobileCartHeader}>
-          <h3>🛒 Your Order</h3>
-          <button className={styles.closeMobileCart} onClick={toggleMobileCart}>×</button>
+      {/* Cart Sidebar - Conditional Rendering */}
+      {isCartOpen && (
+        <div className={`${styles.Cart} ${isMobileCartOpen ? styles.mobileOpen : ""}`}>
+          <div className={styles.mobileCartHeader}>
+            <h3>🛒 Your Order</h3>
+            <button className={styles.closeMobileCart} onClick={() => setIsMobileCartOpen(false)}>×</button>
+          </div>
+          <Cart 
+            cartId={null}
+            userId={user?.id || 1}
+            selectedTableId={selectedTableId}
+            orderSource={orderSource} // ✅ Pass order source to Cart
+            onOrderSuccess={(order) => {
+              setOrderSuccess(order);
+              setIsMobileCartOpen(false);
+              dispatch(fetchAllOrders());
+            }} 
+            onClose={() => {}}
+          />
         </div>
-        <Cart 
-          cartId={null}
-          userId={user?.id || 1}
-          onOrderSuccess={(order) => {
-            setOrderSuccess(order);
-            setIsMobileCartOpen(false);
-          }} 
-        />
-      </div>
+      )}
 
+      {/* Floating Button to Show Cart when hidden */}
+      {!isCartOpen && (
+        <button className={styles.showCartFloatingBtn} onClick={toggleCart}>
+          🛒
+          {totalItemsInCart > 0 && (
+            <span className={styles.cartBadge}>{totalItemsInCart}</span>
+          )}
+        </button>
+      )}
+
+      {/* Mobile Overlay */}
       {isMobileCartOpen && <div className={styles.mobileOverlay} onClick={toggleMobileCart} />}
 
       {/* Payment Modal */}
@@ -322,7 +422,11 @@ function PosSales() {
             </div>
             <div className={styles.paymentContent}>
               <div className={styles.orderInfo}>
-                <p>Table: <strong>Table {selectedOrderForPayment.table?.tableNo}</strong></p>
+                <p>Table: <strong>
+                  {selectedOrderForPayment.orderSource === "DINE_IN" 
+                    ? `Table ${selectedOrderForPayment.table?.tableNo}` 
+                    : selectedOrderForPayment.orderSource}
+                </strong></p>
                 <p>Items: <strong>{selectedOrderForPayment.orderItems?.length || 0}</strong></p>
               </div>
               <div className={styles.paymentTotal}>
@@ -379,7 +483,11 @@ function PosSales() {
             <div className={styles.successIcon}>✅</div>
             <h3>Order Placed!</h3>
             <p>Invoice: <strong>{orderSuccess.invoiceNo}</strong></p>
-            <p>Table: <strong>Table {orderSuccess.table?.tableNo}</strong></p>
+            <p>
+              {orderSuccess.orderSource === "DINE_IN" 
+                ? `Table: Table ${orderSuccess.table?.tableNo}` 
+                : `Order Type: ${orderSuccess.orderSource}`}
+            </p>
             <p>Total: {orderSuccess.totalAmount?.toLocaleString()} Ks</p>
             <p className={styles.paymentNote}>⚠️ Payment will be collected after dining</p>
             <button className={styles.printBtn} onClick={() => window.print()}>🖨️ Print Order</button>

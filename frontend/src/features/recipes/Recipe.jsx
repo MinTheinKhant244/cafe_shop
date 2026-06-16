@@ -12,7 +12,7 @@ import {
   fetchRecipeCostDetails,
   clearCostDetails
 } from "./recipeSlice";
-import { fetchAllProducts } from "../products/productSLice";
+import { fetchAllProducts } from "../products/productSlice";  // ← Fixed: productSlice (not productSLice)
 import { fetchAllCategories } from "../categories/categorySlice";
 import { fetchAllInventory } from "../inventory/inventorySlice";
 import Sidebar from "../../components/Sidebar";
@@ -21,18 +21,32 @@ import styles from "../../assets/css/recipe.module.css";
 function Recipe() {
   const dispatch = useDispatch();
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
+  
+  // Safe access for Redux states
+  const recipeState = useSelector((state) => state.recipes) || {};
   const { 
-    currentProductRecipes, 
-    loading, 
-    error: reduxError, 
-    operationLoading, 
-    ingredientExists,
-    costDetails,
-    loadingCost
-  } = useSelector((state) => state.recipes);
-  const { list: products } = useSelector((state) => state.products);
-  const { list: categories } = useSelector((state) => state.categories);
-  const { list: inventory } = useSelector((state) => state.inventory);
+    currentProductRecipes = [], 
+    loading = false, 
+    error: reduxError = null, 
+    operationLoading = false, 
+    ingredientExists = false,
+    costDetails = null,
+    loadingCost = false
+  } = recipeState;
+  
+  const productsState = useSelector((state) => state.products) || {};
+  const { list: products = [] } = productsState;
+  
+  const categoriesState = useSelector((state) => state.categories) || {};
+  const { list: categories = [] } = categoriesState;
+  
+  const inventoryState = useSelector((state) => state.inventory) || {};
+  const { list: inventoryList = [] } = inventoryState;
+
+  // Filter only ACTIVE inventory items
+  const inventory = Array.isArray(inventoryList) 
+    ? inventoryList.filter(item => item?.status === "ACTIVE")
+    : [];
 
   // States
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -53,9 +67,16 @@ function Recipe() {
   });
 
   useEffect(() => {
-    dispatch(fetchAllProducts());
-    dispatch(fetchAllCategories());
-    dispatch(fetchAllInventory());
+    const loadData = async () => {
+      try {
+        await dispatch(fetchAllProducts());
+        await dispatch(fetchAllCategories());
+        await dispatch(fetchAllInventory());
+      } catch (error) {
+        console.error("Failed to load data:", error);
+      }
+    };
+    loadData();
   }, [dispatch]);
 
   // Show notification helper
@@ -92,7 +113,7 @@ function Recipe() {
 
   // Filter products by search term and category
   const filteredProducts = useMemo(() => {
-    let filtered = products;
+    let filtered = Array.isArray(products) ? products : [];
     
     if (selectedCategory) {
       filtered = filtered.filter(p => p.category?.id === parseInt(selectedCategory));
@@ -142,6 +163,13 @@ function Recipe() {
     }
     if (!formData.quantity || formData.quantity <= 0) {
       showNotification("Please enter a valid quantity", "error");
+      return;
+    }
+    
+    // Validate that selected inventory is active
+    const selectedInventory = inventory.find(i => i.id === parseInt(formData.inventory.id));
+    if (!selectedInventory) {
+      showNotification("Selected ingredient is not active!", "error");
       return;
     }
     
@@ -228,6 +256,7 @@ function Recipe() {
     setShowModal(true);
   };
 
+  // Filter only active inventory that are not already used
   const getAvailableInventory = () => {
     const usedInventoryIds = currentProductRecipes.map(r => r.inventory?.id);
     return inventory.filter(item => !usedInventoryIds.includes(item.id));
@@ -458,13 +487,13 @@ function Recipe() {
                   <tbody>
                     {currentProductRecipes.map((recipe) => {
                       const unitPrice = recipe.inventory?.currentPrice || 0;
-                      const totalCost = unitPrice * recipe.quantity;
+                      const totalCost = unitPrice * (recipe.quantity || 0);
                       
                       return (
                         <tr key={recipe.id}>
                           <td>
                             <span className={styles.ingredientName}>
-                              {recipe.inventory?.name}
+                              {recipe.inventory?.name || "Unknown"}
                             </span>
                           </td>
                           <td>{recipe.inventory?.unit || "-"}</td>
@@ -474,10 +503,8 @@ function Recipe() {
                             </span>
                           </td>
                           <td>{unitPrice.toLocaleString()} Ks</td>
-                          <td>
-                            <span className={styles.costText}>
-                              {totalCost.toLocaleString()} Ks
-                            </span>
+                          <td className={styles.costText}>
+                            {totalCost.toLocaleString()} Ks
                           </td>
                           <td>
                             <div className={styles.actionButtons}>
@@ -543,7 +570,7 @@ function Recipe() {
                   <option value="">Select Ingredient</option>
                   {(isEditing ? inventory : getAvailableInventory()).map(item => (
                     <option key={item.id} value={item.id}>
-                      {item.name} - {item.quantity} {item.unit} - {(item.currentPrice || 0).toLocaleString()} Ks
+                      {item.name} - Stock: {item.quantity} {item.unit} - {(item.currentPrice || 0).toLocaleString()} Ks
                     </option>
                   ))}
                 </select>
@@ -557,7 +584,6 @@ function Recipe() {
                   value={formData.quantity === null || formData.quantity === undefined ? "" : formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                   required
-                  // disabled={operationLoading}  {/* ← ဒီ line ကို ဖယ်လိုက်ပါ ဒါမှမဟုတ် comment လုပ်လိုက်ပါ */}
                 />
                 <small className={styles.hintText}>
                   {formData.inventory.id && inventory.find(i => i.id === parseInt(formData.inventory.id))?.unit}

@@ -28,6 +28,7 @@ function Table() {
   const [selectedTable, setSelectedTable] = useState(null);
   const [tableToDelete, setTableToDelete] = useState(null);
   const [tableNo, setTableNo] = useState("");
+  const [isMaster, setIsMaster] = useState(false);
   const [error, setError] = useState("");
   const [selectedSubTableId, setSelectedSubTableId] = useState(null);
   const [selectedMasterTableId, setSelectedMasterTableId] = useState(null);
@@ -47,16 +48,25 @@ function Table() {
   useEffect(() => {
     if (tables && tables.length > 0) {
       console.log("=== TABLES DATA FROM BACKEND ===");
-      tables.forEach(table => {
-        console.log({
-          id: table.id,
-          tableNo: table.tableNo,
-          isMaster: table.isMaster,
-          parentTableId: table.parentTableId,
-          status: table.status,
-          subTables: table.subTables
+      tables.forEach((table, index) => {
+        console.log(`Table ${index}:`, {
+          id: table?.id,
+          tableNo: table?.tableNo,
+          hasTableNo: !!table?.tableNo,
+          isMaster: table?.isMaster,
+          parentTableId: table?.parentTableId,
+          status: table?.status,
+          subTables: table?.subTables
         });
       });
+      
+      // Check for invalid tables
+      const invalidTables = tables.filter(t => !t?.tableNo);
+      if (invalidTables.length > 0) {
+        console.error("❌ Invalid tables found (missing tableNo):", invalidTables);
+      } else {
+        console.log("✅ All tables have tableNo");
+      }
     }
   }, [tables]);
 
@@ -89,8 +99,12 @@ function Table() {
       return;
     }
     try {
-      await dispatch(addTable({ tableNo })).unwrap();
+      await dispatch(addTable({ 
+        tableNo, 
+        isMaster: isMaster
+      })).unwrap();
       setTableNo("");
+      setIsMaster(false);
       setShowAddModal(false);
       setError("");
       showNotification(`Table ${tableNo} added successfully!`, "success");
@@ -125,6 +139,8 @@ function Table() {
 
   // Delete table
   const handleDeleteClick = (table) => {
+    if (!table) return;
+    
     // Check if table is a master with sub tables
     if (isMasterTable(table) && table.subTables && table.subTables.length > 0) {
       showNotification(`Cannot delete master table "${table.tableNo}" because it has ${table.subTables.length} sub table(s). Please unmerge all sub tables first.`, "error");
@@ -168,6 +184,7 @@ function Table() {
 
   // Get table type for display
   const getTableType = (table) => {
+    if (!table) return "NORMAL";
     if (isMasterTable(table)) return "MASTER";
     if (table.parentTableId && table.parentTableId !== null && table.parentTableId !== 0) return "SUB";
     return "NORMAL";
@@ -175,6 +192,7 @@ function Table() {
 
   // Get type icon
   const getTypeIcon = (table) => {
+    if (!table) return "📋";
     if (isMasterTable(table)) return "👑";
     if (table.parentTableId && table.parentTableId !== null && table.parentTableId !== 0) return "🔗";
     return "📋";
@@ -182,33 +200,76 @@ function Table() {
 
   // Check if table can be modified (not a sub table)
   const canModify = (table) => {
+    if (!table) return false;
     return !table.parentTableId || table.parentTableId === null || table.parentTableId === 0;
   };
 
-  // Filter tables based on search term, status, and type
+  // FIXED: Filter tables based on search term, status, and type
   const getFilteredTables = () => {
-    if (!tables) return [];
+    // Early return with validation
+    if (!tables || !Array.isArray(tables) || tables.length === 0) {
+      return [];
+    }
     
-    return tables.filter(table => {
-      // Search by table number/name
-      const matchesSearch = table.tableNo.toLowerCase().includes(searchTerm.toLowerCase());
+    // Filter out invalid tables first
+    const validTables = tables.filter(table => {
+      if (!table || typeof table !== 'object') {
+        console.warn("Invalid table entry (not an object):", table);
+        return false;
+      }
       
-      // Filter by status
-      const matchesStatus = statusFilter === "ALL" || table.status === statusFilter;
+      if (!table.tableNo || table.tableNo === null || table.tableNo === undefined) {
+        console.warn("Table missing tableNo:", table);
+        return false;
+      }
       
-      // Filter by type
+      return true;
+    });
+    
+    // If no valid tables, return empty array
+    if (validTables.length === 0) {
+      return [];
+    }
+    
+    // Apply filters
+    return validTables.filter(table => {
+      // Search filter - safe
+      let matchesSearch = true;
+      if (searchTerm && searchTerm.trim() !== '') {
+        try {
+          const searchLower = searchTerm.toLowerCase().trim();
+          const tableNoStr = String(table.tableNo);
+          matchesSearch = tableNoStr.toLowerCase().includes(searchLower);
+        } catch (error) {
+          console.error("Error in search filter:", error);
+          matchesSearch = false;
+        }
+      }
+      
+      // Status filter
+      const matchesStatus = statusFilter === "ALL" || 
+        (table.status && table.status === statusFilter);
+      
+      // Type filter
       let matchesType = true;
       if (typeFilter !== "ALL") {
-        const tableType = getTableType(table);
-        matchesType = tableType === typeFilter;
+        try {
+          const tableType = getTableType(table);
+          matchesType = tableType === typeFilter;
+        } catch (error) {
+          console.error("Error in type filter:", error);
+          matchesType = false;
+        }
       }
       
       return matchesSearch && matchesStatus && matchesType;
     });
   };
 
-  // FIXED: Change table status (Occupy/Release) - Master will update all sub tables
+  // Change table status (Occupy/Release) - Master will update all sub tables
   const handleStatusChange = async (table) => {
+    if (!table) return;
+    
     // Sub table cannot be modified individually
     if (!canModify(table)) {
       showNotification("This table is merged as a sub table. Please unmerge first or change master table status.", "error");
@@ -342,15 +403,21 @@ function Table() {
             <span className={styles.statLabel}>Filtered Tables</span>
           </div>
           <div className={styles.statCard}>
-            <span className={styles.statValue}>{tables?.filter(t => t.status === "AVAILABLE").length || 0}</span>
+            <span className={styles.statValue}>
+              {tables?.filter(t => t?.status === "AVAILABLE").length || 0}
+            </span>
             <span className={styles.statLabel}>Available</span>
           </div>
           <div className={styles.statCard}>
-            <span className={styles.statValue}>{tables?.filter(t => t.status === "OCCUPIED").length || 0}</span>
+            <span className={styles.statValue}>
+              {tables?.filter(t => t?.status === "OCCUPIED").length || 0}
+            </span>
             <span className={styles.statLabel}>Occupied</span>
           </div>
           <div className={styles.statCard}>
-            <span className={styles.statValue}>{tables?.filter(t => isMasterTable(t)).length || 0}</span>
+            <span className={styles.statValue}>
+              {tables?.filter(t => t && isMasterTable(t)).length || 0}
+            </span>
             <span className={styles.statLabel}>Master Tables</span>
           </div>
         </div>
@@ -567,6 +634,23 @@ function Table() {
                 />
                 {error && <small className={styles.errorText}>{error}</small>}
               </div>
+              
+              {/* ✅ Add Master Table Checkbox */}
+              <div className={styles.formGroup}>
+                <label className={styles.checkboxLabel}>
+                  <input 
+                    type="checkbox"
+                    checked={isMaster}
+                    onChange={(e) => setIsMaster(e.target.checked)}
+                    disabled={operationLoading}
+                  />
+                  <span>Set as Master Table</span>
+                </label>
+                <small className={styles.helperText}>
+                  {isMaster ? "👑 This table will be a master table" : "📋 This will be a normal table"}
+                </small>
+              </div>
+              
               <div className={styles.modalFooter}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setShowAddModal(false)}>Cancel</button>
                 <button type="submit" className={styles.saveBtn} disabled={operationLoading}>
@@ -596,14 +680,14 @@ function Table() {
               >
                 <option value="">-- Select Master Table --</option>
                 {tables
-                  ?.filter((t) => isMasterTable(t) && t.id !== selectedSubTableId)
+                  ?.filter((t) => t && isMasterTable(t) && t.id !== selectedSubTableId)
                   .map((t) => (
                     <option key={t.id} value={t.id}>
                       Table {t.tableNo} (ID: {t.id}) {t.status === "AVAILABLE" ? "🟢" : "🔴"}
                     </option>
                   ))}
               </select>
-              {tables?.filter(t => isMasterTable(t) && t.id !== selectedSubTableId).length === 0 && (
+              {tables?.filter(t => t && isMasterTable(t) && t.id !== selectedSubTableId).length === 0 && (
                 <small className={styles.warningText}>
                   ⚠️ No master tables available. Please set a table as master first.
                 </small>
@@ -614,7 +698,7 @@ function Table() {
               <button 
                 className={styles.saveBtn} 
                 onClick={handleMergeAction}
-                disabled={tables?.filter(t => isMasterTable(t) && t.id !== selectedSubTableId).length === 0 || operationLoading}
+                disabled={tables?.filter(t => t && isMasterTable(t) && t.id !== selectedSubTableId).length === 0 || operationLoading}
               >
                 {operationLoading ? "Merging..." : "Confirm Merge"}
               </button>

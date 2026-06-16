@@ -21,7 +21,7 @@ public class TableServiceImpl implements TableService {
         if (tableRepository.existsByTableNo(table.getTableNo())) {
             throw new RuntimeException("Table number " + table.getTableNo() + " already exists!");
         }
-        table.setMaster(false);
+        table.setMaster(table.isMaster());
         table.setParentTableId(null);
         table.setStatus("AVAILABLE");
         return tableRepository.save(table);

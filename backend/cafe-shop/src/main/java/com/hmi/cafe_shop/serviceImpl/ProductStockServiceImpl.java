@@ -45,16 +45,11 @@ public class ProductStockServiceImpl implements ProductStockService {
             return buildUnlimitedStockResponse(product);
         }
 
-        // Get current inventory stock for required ingredients
-        Map<Long, Double> inventoryStock = getCurrentInventoryStock(recipes);
+        // ✅ Keep all recipes but treat inactive inventory as zero stock
+        Map<Long, Double> inventoryStock = getCurrentInventoryStockWithZeroForInactive(recipes);
         
-        // FIX: Calculate reserved stock from OTHER products only (excluding current product)
+        // Calculate reserved stock from OTHER products only (excluding current product)
         Map<Long, Double> reservedStock = calculateReservedStockFromCartItemsExcludingProduct(cartItems, productId);
-        
-        // 🔥 FIX: Also include current product's own reserved stock? NO!
-        // For available quantity calculation, we want: 
-        // available = for each ingredient: (currentStock - reservedFromOthers) / requiredPerUnit
-        // This tells us how many MORE of this product can be added
         
         int availableQuantity = calculateAvailableQuantityWithReservation(recipes, inventoryStock, reservedStock);
         
@@ -64,7 +59,7 @@ public class ProductStockServiceImpl implements ProductStockService {
         boolean isOutOfStock = availableQuantity <= 0;
         boolean isLowStock = availableQuantity > 0 && availableQuantity <= 5;
         
-        log.debug("Product {} available quantity (more can be added): {}, out of stock: {}, low stock: {}", 
+        log.debug("Product {} available quantity: {}, out of stock: {}, low stock: {}", 
             productId, availableQuantity, isOutOfStock, isLowStock);
         
         return ProductStockResponse.builder()
@@ -101,10 +96,10 @@ public class ProductStockServiceImpl implements ProductStockService {
             .map(r -> r.getInventory().getId())
             .collect(Collectors.toSet());
         
-        // Get current inventory stocks for all required ingredients
-        Map<Long, Double> currentStocks = getCurrentInventoryStocksByIds(inventoryIds);
+        // ✅ Get current inventory stocks (inactive = 0)
+        Map<Long, Double> currentStocks = getCurrentInventoryStocksWithZeroForInactive(inventoryIds);
         
-        // 🔥 For each product, calculate reserved from OTHER products only
+        // For each product, calculate reserved from OTHER products only
         for (Long productId : productIds) {
             List<Recipe> productRecipes = recipesByProduct.getOrDefault(productId, new ArrayList<>());
             
@@ -116,7 +111,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 continue;
             }
             
-            // 🔥 Calculate reserved from OTHER products only (excluding current product)
+            // Calculate reserved from OTHER products only (excluding current product)
             Map<Long, Double> reservedFromOthers = calculateReservedStockFromCartItemsExcludingProduct(cartItems, productId);
             
             Product product = productRecipes.get(0).getProduct();
@@ -147,7 +142,6 @@ public class ProductStockServiceImpl implements ProductStockService {
         }
         
         ProductStockResponse stock = calculateProductStock(productId, cartItems);
-        // availableQuantity is how many MORE can be added
         return stock.getAvailableQuantity() >= requestedQuantity;
     }
 
@@ -161,27 +155,44 @@ public class ProductStockServiceImpl implements ProductStockService {
     // ============ Private Helper Methods ============
 
     /**
-     * Get current inventory stock for required ingredients
+     * ✅ Get current inventory stock - INACTIVE inventory returns 0 stock
      */
-    private Map<Long, Double> getCurrentInventoryStock(List<Recipe> recipes) {
+    private Map<Long, Double> getCurrentInventoryStockWithZeroForInactive(List<Recipe> recipes) {
         Set<Long> inventoryIds = recipes.stream()
             .map(r -> r.getInventory().getId())
             .collect(Collectors.toSet());
         
-        return getCurrentInventoryStocksByIds(inventoryIds);
+        return getCurrentInventoryStocksWithZeroForInactive(inventoryIds);
     }
     
-//    Get current inventory stocks by IDs
-    private Map<Long, Double> getCurrentInventoryStocksByIds(Set<Long> inventoryIds) {
+    /**
+     * ✅ Get current inventory stocks - INACTIVE inventory returns 0 stock
+     */
+    private Map<Long, Double> getCurrentInventoryStocksWithZeroForInactive(Set<Long> inventoryIds) {
         if (inventoryIds.isEmpty()) {
             return new HashMap<>();
         }
         
-        return inventoryRepository.findAllById(inventoryIds).stream()
-            .collect(Collectors.toMap(Inventory::getId, Inventory::getQuantity));
+        Map<Long, Double> result = new HashMap<>();
+        List<Inventory> inventories = inventoryRepository.findAllById(inventoryIds);
+        
+        for (Inventory inventory : inventories) {
+            // ✅ If inventory is INACTIVE, return 0 stock
+            if (!"ACTIVE".equals(inventory.getStatus())) {
+                log.debug("Inventory {} ({}) is INACTIVE, treating as 0 stock", 
+                    inventory.getId(), inventory.getName());
+                result.put(inventory.getId(), 0.0);
+            } else {
+                result.put(inventory.getId(), inventory.getQuantity());
+            }
+        }
+        
+        return result;
     }
 
-//     FIXED: Calculate reserved stock from OTHER products only (excluding current product)
+    /**
+     * Calculate reserved stock from OTHER products only (excluding current product)
+     */
     private Map<Long, Double> calculateReservedStockFromCartItemsExcludingProduct(
             List<CartItemRequest> cartItems, Long excludeProductId) {
         
@@ -193,7 +204,7 @@ public class ProductStockServiceImpl implements ProductStockService {
         List<Long> productIds = cartItems.stream()
             .map(CartItemRequest::getProductId)
             .filter(Objects::nonNull)
-            .filter(id -> !id.equals(excludeProductId))  // 🔥 Exclude current product
+            .filter(id -> !id.equals(excludeProductId))
             .collect(Collectors.toList());
         
         if (productIds.isEmpty()) {
@@ -212,7 +223,7 @@ public class ProductStockServiceImpl implements ProductStockService {
             Long productId = cartItem.getProductId();
             Integer quantity = cartItem.getQuantity();
             
-            // 🔥 Skip the current product
+            // Skip the current product
             if (productId == null || quantity == null || quantity <= 0 || productId.equals(excludeProductId)) {
                 continue;
             }
@@ -231,7 +242,9 @@ public class ProductStockServiceImpl implements ProductStockService {
         return reservedIngredients;
     }
 
-//     Calculate available quantity based on the most limiting ingredient
+    /**
+     * Calculate available quantity based on the most limiting ingredient
+     */
     private int calculateAvailableQuantityWithReservation(List<Recipe> recipes,
                                                            Map<Long, Double> currentStocks,
                                                            Map<Long, Double> reservedStocks) {
@@ -240,11 +253,20 @@ public class ProductStockServiceImpl implements ProductStockService {
         for (Recipe recipe : recipes) {
             Long inventoryId = recipe.getInventory().getId();
             Double requiredPerUnit = recipe.getQuantity();
+            
+            // ✅ Current stock might be 0 for inactive inventory
             Double currentStock = currentStocks.getOrDefault(inventoryId, 0.0);
             Double reserved = reservedStocks.getOrDefault(inventoryId, 0.0);
             
-            // Available = Current - Reserved (from OTHER cart items only)
+            // Available = Current - Reserved
             Double availableStock = currentStock - reserved;
+            
+            // ✅ Log warning if inventory is inactive (stock is 0)
+            Inventory inventory = recipe.getInventory();
+            if (inventory != null && !"ACTIVE".equals(inventory.getStatus())) {
+                log.warn("Ingredient {} ({}) is INACTIVE, available stock: 0", 
+                    inventoryId, inventory.getName());
+            }
             
             if (availableStock <= 0) {
                 log.debug("Ingredient {} has no available stock: current={}, reserved={}", 
@@ -262,7 +284,9 @@ public class ProductStockServiceImpl implements ProductStockService {
         return maxQuantity == Integer.MAX_VALUE ? 0 : maxQuantity;
     }
 
-//      Get detailed ingredient limit breakdown with reservations
+    /**
+     * Get detailed ingredient limit breakdown with reservations
+     */
     private List<IngredientLimit> getIngredientLimitsWithReservation(List<Recipe> recipes,
                                                                       Map<Long, Double> currentStocks,
                                                                       Map<Long, Double> reservedStocks) {
@@ -271,15 +295,22 @@ public class ProductStockServiceImpl implements ProductStockService {
         for (Recipe recipe : recipes) {
             Inventory inventory = recipe.getInventory();
             Double requiredPerUnit = recipe.getQuantity();
+            
+            // ✅ Current stock might be 0 for inactive inventory
             Double currentStock = currentStocks.getOrDefault(inventory.getId(), 0.0);
             Double reserved = reservedStocks.getOrDefault(inventory.getId(), 0.0);
             Double availableStock = currentStock - reserved;
             
             int possibleUnits = availableStock <= 0 ? 0 : (int) Math.floor(availableStock / requiredPerUnit);
             
+            // ✅ Add indicator if inventory is inactive
+            boolean isInactive = !"ACTIVE".equals(inventory.getStatus());
+            String statusIcon = isInactive ? "🔴" : "🟢";
+            String displayName = isInactive ? statusIcon + " " + inventory.getName() + " (INACTIVE)" : inventory.getName();
+            
             limits.add(IngredientLimit.builder()
                 .ingredientId(inventory.getId())
-                .ingredientName(inventory.getName())
+                .ingredientName(displayName)
                 .unit(inventory.getUnit() != null ? inventory.getUnit() : "unit")
                 .requiredPerUnit(requiredPerUnit)
                 .currentStock(currentStock)
@@ -287,6 +318,7 @@ public class ProductStockServiceImpl implements ProductStockService {
                 .availableStock(Math.max(0, availableStock))
                 .possibleUnits(possibleUnits)
                 .isLimiting(false)
+                .isInactive(isInactive)  // You may need to add this field to IngredientLimit DTO
                 .build());
         }
         
@@ -308,7 +340,9 @@ public class ProductStockServiceImpl implements ProductStockService {
         return limits;
     }
     
-//      Build response for unlimited stock product (no ingredients needed)
+    /**
+     * Build response for unlimited stock product (no ingredients needed)
+     */
     private ProductStockResponse buildUnlimitedStockResponse(Product product) {
         return ProductStockResponse.builder()
             .productId(product.getId())
@@ -322,10 +356,21 @@ public class ProductStockServiceImpl implements ProductStockService {
             .build();
     }
     
-//     Generate warning message based on stock status
+    /**
+     * Generate warning message based on stock status
+     */
     private String generateWarningMessage(List<IngredientLimit> ingredientLimits, int availableQuantity) {
         if (availableQuantity <= 0) {
-            // Find the first limiting ingredient
+            // Check if any inactive ingredient is causing out of stock
+            Optional<IngredientLimit> inactiveIngredient = ingredientLimits.stream()
+                .filter(IngredientLimit::getIsInactive)
+                .findFirst();
+            
+            if (inactiveIngredient.isPresent()) {
+                return String.format("❌ Out of stock! %s is inactive/disabled. Please activate it first.",
+                    inactiveIngredient.get().getIngredientName());
+            }
+            
             IngredientLimit limiting = ingredientLimits.stream()
                 .filter(IngredientLimit::getIsLimiting)
                 .findFirst()

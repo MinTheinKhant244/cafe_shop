@@ -26,7 +26,7 @@ public class TableEntity {
     
     @Column(name = "is_master")
     @JsonProperty("isMaster")
-    private boolean isMaster = false; 
+    private boolean isMaster; 
 
     @Column(name = "status")
     private String status;

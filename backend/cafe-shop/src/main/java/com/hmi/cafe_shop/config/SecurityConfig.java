@@ -30,12 +30,12 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**", "/uploads/**").permitAll()
                 .requestMatchers("/api/products/all", "/api/products/active", "/api/products/category/**").permitAll()
                 .requestMatchers("/api/categories/all", "/api/categories/active").permitAll()
-                .requestMatchers("/api/inventory/**", "/api/recipes/**", "/api/products/**", "/api/categories/**", "/api/dashboard/**", "/api/users/**").hasRole("ADMIN")
-                .requestMatchers("/api/tables/**", "/api/recipes/**").hasAnyRole("ADMIN", "CASHIER")
-                .requestMatchers("/api/carts/**").permitAll()	
+                .requestMatchers("/api/inventory-transactions/**", "/api/inventory/**", "/api/recipes/**", "/api/products/**", "/api/categories/**", "/api/dashboard/**", "/api/users/**").hasRole("ADMIN")
+                .requestMatchers("/api/carts/**", "/api/recipes/**").hasAnyRole("ADMIN", "CASHIER")
+                .requestMatchers("/api/orders/**", "/api/tables/**").permitAll()
+                .requestMatchers("/api/product-stock/**").hasAnyRole("ADMIN", "CASHIER")
                 
-                // Authenticated Access
-                .requestMatchers("/api/orders/**", "/api/order-items/**", "/api/payments/**").authenticated()
+                .requestMatchers("/api/order-items/**", "/api/payments/**").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

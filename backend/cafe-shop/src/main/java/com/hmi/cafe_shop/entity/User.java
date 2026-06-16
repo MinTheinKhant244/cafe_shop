@@ -20,7 +20,10 @@ public class User {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	
+	@Column(unique = true, nullable = false)
 	private String name;
+	
+	@Column(unique = true, nullable = false)
 	private String email;
 	
 	@JsonIgnore
@@ -42,10 +45,6 @@ public class User {
 	@OneToMany(mappedBy = "createdBy")
 	@JsonIgnore 
 	private List<Order> orders;
-	
-	@OneToMany(mappedBy = "createdBy")
-	@JsonIgnore
-	private List<PurchaseOrder> purchaseOrdersCreated;
 	
 	@Column(name = "reset_token")
     private String resetToken;

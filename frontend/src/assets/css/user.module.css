@@ -795,3 +795,71 @@
     width: 100%;
   }
 }
+
+/* Notification Styles */
+.notification {
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 500;
+  animation: slideDown 0.3s ease;
+}
+
+.notification.success {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.notification.error {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.notificationClose {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: inherit;
+  padding: 0 4px;
+}
+
+/* Modal Error */
+.modalError {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border: 1px solid #fecaca;
+  font-size: 14px;
+}
+
+/* Animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Disabled button states */
+.actionButtons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveBtn:disabled,
+.cancelBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

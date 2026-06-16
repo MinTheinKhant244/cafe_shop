@@ -3,7 +3,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../app/api";
 
-// Fetch all inventory items
+// Fetch all inventory items (active only by default)
 export const fetchAllInventory = createAsyncThunk(
   "inventory/fetchAll",
   async (_, thunkAPI) => {
@@ -13,6 +13,30 @@ export const fetchAllInventory = createAsyncThunk(
     } catch (error) {
       console.error("API Error:", error);
       return thunkAPI.rejectWithValue(error.response?.data?.error || "Failed to fetch inventory");
+    }
+  }
+);
+
+export const fetchActiveInventory = createAsyncThunk(
+  "inventory/fetchActive",
+  async (_, thunkAPI) => {
+    try {
+      const response = await api.get("/inventory/active");
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response?.data?.error || "Failed to fetch active inventory");
+    }
+  }
+);
+
+export const fetchInactiveInventory = createAsyncThunk(
+  "inventory/fetchInactive",
+  async (_, thunkAPI) => {
+    try {
+      const response = await api.get("/inventory/inactive");
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response?.data?.error || "Failed to fetch inactive inventory");
     }
   }
 );
@@ -82,7 +106,33 @@ export const updateInventory = createAsyncThunk(
   }
 );
 
-// Delete inventory item
+// ✅ Activate inventory item
+export const activateInventory = createAsyncThunk(
+  "inventory/activate",
+  async (id, thunkAPI) => {
+    try {
+      const response = await api.put(`/inventory/${id}/activate`);
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response?.data?.error || "Failed to activate inventory");
+    }
+  }
+);
+
+// ✅ Deactivate inventory item
+export const deactivateInventory = createAsyncThunk(
+  "inventory/deactivate",
+  async (id, thunkAPI) => {
+    try {
+      const response = await api.put(`/inventory/${id}/deactivate`);
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response?.data?.error || "Failed to deactivate inventory");
+    }
+  }
+);
+
+// Delete inventory item (hard delete)
 export const deleteInventory = createAsyncThunk(
   "inventory/delete",
   async (id, thunkAPI) => {
@@ -146,6 +196,8 @@ const inventorySlice = createSlice({
     totalStockValue: 0,
     selectedInventory: null,
     belowThresholdItems: [],
+    activeItems: [],
+    inactiveItems: [],
   },
   reducers: {
     clearError: (state) => {
@@ -161,6 +213,8 @@ const inventorySlice = createSlice({
       state.totalStockValue = 0;
       state.selectedInventory = null;
       state.belowThresholdItems = [];
+      state.activeItems = [];
+      state.inactiveItems = [];
     },
     setSelectedInventory: (state, action) => {
       state.selectedInventory = action.payload;
@@ -183,6 +237,36 @@ const inventorySlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.list = [];
+      })
+      
+      // ✅ Fetch Active
+      .addCase(fetchActiveInventory.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchActiveInventory.fulfilled, (state, action) => {
+        state.loading = false;
+        state.activeItems = Array.isArray(action.payload) ? action.payload : [];
+        state.error = null;
+      })
+      .addCase(fetchActiveInventory.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // ✅ Fetch Inactive
+      .addCase(fetchInactiveInventory.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchInactiveInventory.fulfilled, (state, action) => {
+        state.loading = false;
+        state.inactiveItems = Array.isArray(action.payload) ? action.payload : [];
+        state.error = null;
+      })
+      .addCase(fetchInactiveInventory.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       
       // Fetch By ID
@@ -265,6 +349,62 @@ const inventorySlice = createSlice({
         state.error = action.payload;
       })
       
+      // ✅ Activate
+      .addCase(activateInventory.pending, (state) => {
+        state.operationLoading = true;
+        state.error = null;
+      })
+      .addCase(activateInventory.fulfilled, (state, action) => {
+        state.operationLoading = false;
+        const activatedItem = action.payload?.item;
+        if (activatedItem) {
+          // Update in list
+          const index = state.list.findIndex(item => item.id === activatedItem.id);
+          if (index !== -1) {
+            state.list[index] = activatedItem;
+          }
+          // Remove from inactive list if present
+          state.inactiveItems = state.inactiveItems.filter(item => item.id !== activatedItem.id);
+          // Add to active list
+          if (!state.activeItems.find(item => item.id === activatedItem.id)) {
+            state.activeItems.push(activatedItem);
+          }
+        }
+        state.error = null;
+      })
+      .addCase(activateInventory.rejected, (state, action) => {
+        state.operationLoading = false;
+        state.error = action.payload;
+      })
+      
+      // ✅ Deactivate
+      .addCase(deactivateInventory.pending, (state) => {
+        state.operationLoading = true;
+        state.error = null;
+      })
+      .addCase(deactivateInventory.fulfilled, (state, action) => {
+        state.operationLoading = false;
+        const deactivatedItem = action.payload?.item;
+        if (deactivatedItem) {
+          // Update in list
+          const index = state.list.findIndex(item => item.id === deactivatedItem.id);
+          if (index !== -1) {
+            state.list[index] = deactivatedItem;
+          }
+          // Remove from active list
+          state.activeItems = state.activeItems.filter(item => item.id !== deactivatedItem.id);
+          // Add to inactive list
+          if (!state.inactiveItems.find(item => item.id === deactivatedItem.id)) {
+            state.inactiveItems.push(deactivatedItem);
+          }
+        }
+        state.error = null;
+      })
+      .addCase(deactivateInventory.rejected, (state, action) => {
+        state.operationLoading = false;
+        state.error = action.payload;
+      })
+      
       // Delete
       .addCase(deleteInventory.pending, (state) => {
         state.operationLoading = true;
@@ -273,6 +413,8 @@ const inventorySlice = createSlice({
       .addCase(deleteInventory.fulfilled, (state, action) => {
         state.operationLoading = false;
         state.list = state.list.filter(item => item.id !== action.payload);
+        state.activeItems = state.activeItems.filter(item => item.id !== action.payload);
+        state.inactiveItems = state.inactiveItems.filter(item => item.id !== action.payload);
         state.error = null;
       })
       .addCase(deleteInventory.rejected, (state, action) => {

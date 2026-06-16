@@ -15,4 +15,5 @@ public class IngredientLimit {
     private Double availableStock;
     private Integer possibleUnits;
     private Boolean isLimiting;
+    private Boolean isInactive;  
 }

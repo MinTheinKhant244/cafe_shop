@@ -35,4 +35,11 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     @Query("SELECT i FROM Inventory i WHERE i.id = :id")
     Inventory findByIdWithLock(@Param("id") Long id);
     
+    List<Inventory> findByStatus(String status);
+    
+    @Query("SELECT i FROM Inventory i WHERE i.status = 'ACTIVE'")
+    List<Inventory> findAllActive();
+    
+    Optional<Inventory> findByIdAndStatus(Long id, String status);
+    
 }

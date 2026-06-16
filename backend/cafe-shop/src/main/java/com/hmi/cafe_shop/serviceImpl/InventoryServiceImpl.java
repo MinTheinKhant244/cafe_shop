@@ -4,8 +4,10 @@ import com.hmi.cafe_shop.entity.Inventory;
 import com.hmi.cafe_shop.repository.InventoryRepository;
 import com.hmi.cafe_shop.service.InventoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,6 +36,10 @@ public class InventoryServiceImpl implements InventoryService {
             throw new IllegalArgumentException("Inventory item with name '" + inventory.getName() + "' already exists");
         }
         
+        // Set default status
+        inventory.setStatus("ACTIVE");
+        inventory.setQuantity(0.0); 
+        
         return inventoryRepository.save(inventory);
     }
 
@@ -52,7 +58,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
         
         // Update unit
-        if (inventory.getUnit() != null && !inventory.getUnit().trim().isEmpty()) {
+        if (inventory.getUnit() != null) {
             existing.setUnit(inventory.getUnit());
         }
         
@@ -74,15 +80,10 @@ public class InventoryServiceImpl implements InventoryService {
             }
         }
         
-        // ⭐ CRITICAL: Update quantity if provided
-        if (inventory.getQuantity() != null) {
-            if (inventory.getQuantity() < 0) {
-                throw new IllegalArgumentException("Quantity cannot be negative");
-            }
-            existing.setQuantity(inventory.getQuantity());
-        }
+        // ❌ REMOVED: Do NOT update quantity here! Use transactions instead
+        // Quantity should only be updated via Stock In/Out transactions
         
-        // ⭐ CRITICAL: Update current price if provided
+        // Update current price if provided
         if (inventory.getCurrentPrice() != null) {
             if (inventory.getCurrentPrice() < 0) {
                 throw new IllegalArgumentException("Price cannot be negative");
@@ -93,9 +94,48 @@ public class InventoryServiceImpl implements InventoryService {
         return inventoryRepository.save(existing);
     }
     
+    @Override
+    @Transactional
+    public Inventory deactivate(Long id) {
+        Inventory inventory = getInventoryOrThrow(id);
+        
+        inventory.setStatus("INACTIVE");
+        inventory.setDeactivatedAt(LocalDateTime.now());
+        inventory.setDeactivatedBy(getCurrentUser());
+        
+        return inventoryRepository.save(inventory);
+    }
+    
+    @Override
+    @Transactional
+    public Inventory activate(Long id) {
+        Inventory inventory = getInventoryOrThrow(id);
+        
+        inventory.setStatus("ACTIVE");
+        inventory.setDeactivatedAt(null);
+        inventory.setDeactivatedBy(null);
+        
+        return inventoryRepository.save(inventory);
+    }
+    
+    @Override
+    public List<Inventory> getActiveOnly() {
+        return inventoryRepository.findByStatus("ACTIVE");
+    }
+    
+    @Override
+    public List<Inventory> getInactiveOnly() {
+        return inventoryRepository.findByStatus("INACTIVE");
+    }
 
     @Override
-    public void delete(Long id) {        
+    public void delete(Long id) {
+        Inventory inventory = getInventoryOrThrow(id);
+        
+        if (inventory.getTransactions() != null && !inventory.getTransactions().isEmpty()) {
+            throw new RuntimeException("Cannot delete inventory with existing transactions. Use deactivate instead.");
+        }
+        
         inventoryRepository.deleteById(id);
     }
 
@@ -107,7 +147,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public List<Inventory> searchByName(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
-            return inventoryRepository.findAll();
+            return inventoryRepository.findByStatus("ACTIVE");
         }
         return inventoryRepository.searchByName(keyword);
     }
@@ -132,9 +172,10 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public Double getTotalStockValue() {
-        List<Inventory> allInventories = inventoryRepository.findAll();
-        return allInventories.stream()
-            .mapToDouble(i -> i.getQuantity() * i.getCurrentPrice())
+        List<Inventory> activeItems = inventoryRepository.findByStatus("ACTIVE");
+        return activeItems.stream()
+            .mapToDouble(i -> (i.getQuantity() != null ? i.getQuantity() : 0) * 
+                              (i.getCurrentPrice() != null ? i.getCurrentPrice() : 0))
             .sum();
     }
 
@@ -142,9 +183,6 @@ public class InventoryServiceImpl implements InventoryService {
     private void validateInventory(Inventory inventory) {
         if (inventory.getName() == null || inventory.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Inventory name is required");
-        }
-        if (inventory.getQuantity() == null || inventory.getQuantity() < 0) {
-            throw new IllegalArgumentException("Quantity must be greater than or equal to 0");
         }
         if (inventory.getCurrentPrice() == null || inventory.getCurrentPrice() < 0) {
             throw new IllegalArgumentException("Price must be greater than or equal to 0");
@@ -155,5 +193,12 @@ public class InventoryServiceImpl implements InventoryService {
         return inventoryRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Inventory not found with id: " + id));
     }
-	
+    
+    private String getCurrentUser() {
+        try {
+            return SecurityContextHolder.getContext().getAuthentication().getName();
+        } catch (Exception e) {
+            return "SYSTEM";
+        }
+    }
 }

@@ -16,4 +16,5 @@ public interface UserService {
     String login(String email, String password);
     void forgotPassword(String email); 
     void resetPassword(String token, String newPassword);
+    
 }

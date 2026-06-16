@@ -54,7 +54,8 @@ function Order() {
     const statusMap = {
       PENDING: { class: styles.statusPending, icon: "⏳", text: "Pending" },
       PREPARING: { class: styles.statusPreparing, icon: "🍳", text: "Preparing" },
-      COMPLETED: { class: styles.statusCompleted, icon: "✅", text: "Completed" }
+      COMPLETED: { class: styles.statusCompleted, icon: "✅", text: "Completed" },
+      CANCELLED: { class: styles.statusCancelled, icon: "❌", text: "Cancelled" }
     };
     const s = statusMap[status] || statusMap.PENDING;
     return <span className={`${styles.statusBadge} ${s.class}`}>{s.icon} {s.text}</span>;
@@ -62,10 +63,10 @@ function Order() {
 
   const getPaymentBadge = (paymentStatus) => {
     const paymentMap = {
-      UNPAID: { class: styles.paymentUnpaid, icon: "❌", text: "Unpaid" },
+      PENDING: { class: styles.paymentPending, icon: "⏳", text: "Pending" },
       PAID: { class: styles.paymentPaid, icon: "💰", text: "Paid" }
     };
-    const p = paymentMap[paymentStatus] || paymentMap.UNPAID;
+    const p = paymentMap[paymentStatus] || paymentMap.PENDING;
     return <span className={`${styles.paymentBadge} ${p.class}`}>{p.icon} {p.text}</span>;
   };
 
@@ -92,9 +93,9 @@ function Order() {
             </div>
             <div className={styles.statSummaryItem}>
               <span className={styles.statSummaryValue}>
-                {filteredOrders?.filter(o => o.paymentStatus === "UNPAID").length || 0}
+                {filteredOrders?.filter(o => o.paymentStatus === "PENDING").length || 0}
               </span>
-              <span className={styles.statSummaryLabel}>Unpaid</span>
+              <span className={styles.statSummaryLabel}>Pending Payment</span>
             </div>
           </div>
         </div>
@@ -116,6 +117,10 @@ function Order() {
           <div className={styles.statCard}>
             <span className={styles.statValue}>{orders?.filter(o => o.status === "COMPLETED").length || 0}</span>
             <span className={styles.statLabel}>Completed</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{orders?.filter(o => o.status === "CANCELLED").length || 0}</span>
+            <span className={styles.statLabel}>Cancelled</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{orders?.filter(o => o.paymentStatus === "PAID").length || 0}</span>
@@ -145,10 +150,11 @@ function Order() {
               <option value="PENDING">⏳ Pending</option>
               <option value="PREPARING">🍳 Preparing</option>
               <option value="COMPLETED">✅ Completed</option>
+              <option value="CANCELLED">❌ Cancelled</option>
             </select>
             <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}>
               <option value="all">💳 All Payment</option>
-              <option value="UNPAID">❌ Unpaid</option>
+              <option value="PENDING">⏳ Pending</option>
               <option value="PAID">💰 Paid</option>
             </select>
             {isFilterActive && (
@@ -219,6 +225,7 @@ function Order() {
                         <option value="PENDING">⏳ Pending</option>
                         <option value="PREPARING">🍳 Preparing</option>
                         <option value="COMPLETED">✅ Completed</option>
+                        <option value="CANCELLED">❌ Cancelled</option>
                       </select>
                     </td>
                     <td>
@@ -227,7 +234,7 @@ function Order() {
                         value={order.paymentStatus} 
                         onChange={(e) => handlePaymentChange(order.id, e.target.value)}
                       >
-                        <option value="UNPAID">❌ Unpaid</option>
+                        <option value="PENDING">⏳ Pending</option>
                         <option value="PAID">💰 Paid</option>
                       </select>
                     </td>

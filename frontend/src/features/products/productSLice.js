@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../app/api";
 
-// 1. Fetch All
 export const fetchAllProducts = createAsyncThunk("products/fetchAll", async (_, thunkAPI) => {
   try {
     const response = await api.get("/products/all");
@@ -11,7 +10,6 @@ export const fetchAllProducts = createAsyncThunk("products/fetchAll", async (_, 
   }
 });
 
-// 2. Add (Image Upload အတွက် formData ကို လက်ခံနိုင်ရန်)
 export const addProduct = createAsyncThunk("products/add", async (formData, thunkAPI) => {
   try {
     const response = await api.post("/products/create", formData, {
@@ -23,7 +21,6 @@ export const addProduct = createAsyncThunk("products/add", async (formData, thun
   }
 });
 
-// 3. Update (Image Upload ပါဝင်သည်)
 export const updateProduct = createAsyncThunk("products/update", async ({ id, formData }, thunkAPI) => {
   try {
     const response = await api.put(`/products/update/${id}`, formData, {

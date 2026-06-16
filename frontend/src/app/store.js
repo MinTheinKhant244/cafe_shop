@@ -11,6 +11,8 @@ import uiReducer from './uiSlice';
 import cartReducer from "../features/carts/cartSlice";
 import inventoryReducer from "../features/inventory/inventorySlice"
 import recipeReducer from "../features/recipes/recipeSlice"
+import inventoryTransactionReducer from "../features/inventory/inventoryTransactionSlice"
+import cashierOrderReducer from "../features/cashier/cashierOrderSlice"
 
 
 const store = configureStore({
@@ -26,6 +28,8 @@ const store = configureStore({
         cart: cartReducer,  // ⭐ ဒီလိုင်းထည့်ပါ
         inventory: inventoryReducer,
         recipes: recipeReducer,
+        inventoryTransaction: inventoryTransactionReducer,
+        cashierOrders: cashierOrderReducer,
     }
 })
 

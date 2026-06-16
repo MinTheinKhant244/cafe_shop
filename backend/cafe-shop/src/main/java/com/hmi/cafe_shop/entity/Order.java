@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Table(name = "orders")
 public class Order {
 
-    @Id
+    @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -43,12 +43,13 @@ public class Order {
 
     private LocalDateTime createdAt;
 
-    // ITEMS
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @Column(columnDefinition = "TEXT")
+    private String orderNote;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<OrderItem> orderItems;
 
-    // PAYMENT (important)
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
     @JsonIgnore
     private Payment payment;
@@ -57,7 +58,7 @@ public class Order {
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
 
-        if (status == null) status = "PREPARING";
+        if (status == null) status = "PENDING";
         if (paymentStatus == null) paymentStatus = "PENDING";
     }
 }

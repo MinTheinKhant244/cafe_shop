@@ -1,15 +1,29 @@
 export const sidebarItems = [
+ 
   {
     title: "Cashier POS",
     path: "/pos",
     icon: "fa-cash-register",
-    roles: ["CASHIER", "ADMIN"]
+    roles: ["CASHIER"]   //  Cashier only
   },
+  {
+    title: "Cashier Orders",
+    path: "/cashier/orders",
+    icon: "fa-clipboard-list",
+    roles: ["CASHIER"]  //  Cashier only
+  },
+
   {
     title: "Dashboard",
     path: "/admin/dashboard",
     icon: "fa-chart-line",
     roles: ["ADMIN"]
+  },
+  {
+    title: "Orders",
+    path: "/orders",
+    icon: "fa-receipt",
+    roles: ["ADMIN", "CASHIER"]
   },
   {
     title: "Products",
@@ -36,16 +50,10 @@ export const sidebarItems = [
     roles: ["ADMIN"]
   },
   {
-    title: "Orders",
-    path: "/orders",
-    icon: "fa-receipt",
-    roles: ["ADMIN", "CASHIER"]
-  },
-  {
-    title: "Tables",
-    path: "/tables",
-    icon: "fa-table-list",
-    roles: ["ADMIN", "CASHIER"]
+    title: "Inv Transactions",  
+    path: "/admin/invTransactions",
+    icon: "fa-clock-rotate-left",
+    roles: ["ADMIN"]
   },
   {
     title: "Staffs",
@@ -58,5 +66,13 @@ export const sidebarItems = [
     path: "/admin/reports",
     icon: "fa-chart-bar",
     roles: ["ADMIN"]
+  },
+
+  {
+    title: "Tables",
+    path: "/tables",
+    icon: "fa-table-list",
+    roles: ["ADMIN", "CASHIER"]
   }
+
 ];

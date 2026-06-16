@@ -1,7 +1,6 @@
 package com.hmi.cafe_shop.controller;
 
 import com.hmi.cafe_shop.entity.Inventory;
-import com.hmi.cafe_shop.repository.ProductRepository;
 import com.hmi.cafe_shop.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,13 +17,25 @@ import java.util.Map;
 @CrossOrigin("*")
 public class InventoryController {
 
-	private final ProductRepository productRepository;
     private final InventoryService inventoryService;
 
     @GetMapping
     public ResponseEntity<List<Inventory>> getAll() {
         List<Inventory> inventories = inventoryService.getAll();
         return ResponseEntity.ok(inventories);
+    }
+    
+    @GetMapping("/active")
+    public ResponseEntity<List<Inventory>> getActiveOnly() {
+        List<Inventory> activeItems = inventoryService.getActiveOnly();
+        return ResponseEntity.ok(activeItems);
+    }
+    
+    // ✅ Get inactive items only
+    @GetMapping("/inactive")
+    public ResponseEntity<List<Inventory>> getInactiveOnly() {
+        List<Inventory> inactiveItems = inventoryService.getInactiveOnly();
+        return ResponseEntity.ok(inactiveItems);
     }
 
     @GetMapping("/{id}")
@@ -69,6 +80,44 @@ public class InventoryController {
                     .body(createErrorResponse("Failed to update inventory item: " + e.getMessage()));
         }
     }
+    
+    // ✅ Activate endpoint
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<?> activate(@PathVariable Long id) {
+        try {
+            Inventory activated = inventoryService.activate(id);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Inventory item activated successfully");
+            response.put("item", activated);
+            response.put("status", "ACTIVE");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(createErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorResponse("Failed to activate inventory: " + e.getMessage()));
+        }
+    }
+    
+    // ✅ Deactivate endpoint
+    @PutMapping("/{id}/deactivate")
+    public ResponseEntity<?> deactivate(@PathVariable Long id) {
+        try {
+            Inventory deactivated = inventoryService.deactivate(id);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Inventory item deactivated successfully");
+            response.put("item", deactivated);
+            response.put("status", "INACTIVE");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(createErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorResponse("Failed to deactivate inventory: " + e.getMessage()));
+        }
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
@@ -79,8 +128,8 @@ public class InventoryController {
             response.put("id", String.valueOf(id));
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(createErrorResponse("Inventory item not found with id: " + id));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(createErrorResponse("Failed to delete inventory item: " + e.getMessage()));
@@ -143,7 +192,6 @@ public class InventoryController {
         }
     }
 
-    
     // Get Total Stock Value
     @GetMapping("/total-value")
     public ResponseEntity<?> getTotalStockValue() {
