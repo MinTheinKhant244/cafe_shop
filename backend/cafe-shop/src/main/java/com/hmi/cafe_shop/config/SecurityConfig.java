@@ -31,8 +31,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/products/all", "/api/products/active", "/api/products/category/**").permitAll()
                 .requestMatchers("/api/categories/all", "/api/categories/active").permitAll()
                 .requestMatchers("/api/inventory-transactions/**", "/api/inventory/**", "/api/recipes/**", "/api/products/**", "/api/categories/**", "/api/dashboard/**", "/api/users/**").hasRole("ADMIN")
-                .requestMatchers("/api/carts/**", "/api/recipes/**").hasAnyRole("ADMIN", "CASHIER")
-                .requestMatchers("/api/orders/**", "/api/tables/**").permitAll()
+                .requestMatchers("/api/carts/**", "/api/orders/**", "/api/recipes/**",  "/api/tables/**").hasAnyRole("ADMIN", "CASHIER")
                 .requestMatchers("/api/product-stock/**").hasAnyRole("ADMIN", "CASHIER")
                 
                 .requestMatchers("/api/order-items/**", "/api/payments/**").authenticated()

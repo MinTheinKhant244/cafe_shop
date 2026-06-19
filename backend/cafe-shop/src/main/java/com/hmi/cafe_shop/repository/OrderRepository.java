@@ -87,42 +87,42 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
 //     2. Get today's order summary for dashboard
-    @Query("""
-        SELECT 
-            COUNT(CASE WHEN o.status = 'PREPARING' THEN 1 END) AS newOrders,
-            COUNT(CASE WHEN o.status = 'IN_PROGRESS' THEN 1 END) AS inProgressOrders,
-            COUNT(CASE WHEN o.status = 'READY' THEN 1 END) AS readyOrders,
-            COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 END) AS completedOrders,
-            COUNT(CASE WHEN o.status = 'CANCELLED' THEN 1 END) AS cancelledOrders,
-            COUNT(CASE WHEN o.paymentStatus = 'PENDING' AND o.status != 'CANCELLED' THEN 1 END) AS pendingPaymentOrders,
-            COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.totalAmount ELSE 0 END), 0) AS todayRevenue,
-            COUNT(o) AS totalOrdersToday
-        FROM Order o
-        WHERE DATE(o.createdAt) = :date
-    """)
-    Map<String, Object> findTodayOrderSummary(@Param("date") LocalDate date);
+//    @Query("""
+//        SELECT 
+//            COUNT(CASE WHEN o.status = 'PREPARING' THEN 1 END) AS newOrders,
+//            COUNT(CASE WHEN o.status = 'IN_PROGRESS' THEN 1 END) AS inProgressOrders,
+//            COUNT(CASE WHEN o.status = 'READY' THEN 1 END) AS readyOrders,
+//            COUNT(CASE WHEN o.status = 'COMPLETED' THEN 1 END) AS completedOrders,
+//            COUNT(CASE WHEN o.status = 'CANCELLED' THEN 1 END) AS cancelledOrders,
+//            COUNT(CASE WHEN o.paymentStatus = 'PENDING' AND o.status != 'CANCELLED' THEN 1 END) AS pendingPaymentOrders,
+//            COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' THEN o.totalAmount ELSE 0 END), 0) AS todayRevenue,
+//            COUNT(o) AS totalOrdersToday
+//        FROM Order o
+//        WHERE DATE(o.createdAt) = :date
+//    """)
+//    Map<String, Object> findTodayOrderSummary(@Param("date") LocalDate date);
     
     
 
 //    Get pending payment orders
 //  findByCreatedAtBetween - JPA will auto-implement this
-    List<Order> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
-    
-    @Query("""
-        SELECT o FROM Order o
-        WHERE o.paymentStatus = 'PENDING'
-        AND o.status != 'CANCELLED'
-        AND (:orderSource IS NULL OR o.orderSource = :orderSource)
-        ORDER BY o.createdAt ASC
-    """)
-    List<Order> findPendingPaymentOrders(@Param("orderSource") String orderSource);
+//    List<Order> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+//    
+//    @Query("""
+//        SELECT o FROM Order o
+//        WHERE o.paymentStatus = 'PENDING'
+//        AND o.status != 'CANCELLED'
+//        AND (:orderSource IS NULL OR o.orderSource = :orderSource)
+//        ORDER BY o.createdAt ASC
+//    """)
+//    List<Order> findPendingPaymentOrders(@Param("orderSource") String orderSource);
 
 //     Count pending payment orders
-    @Query("""
-        SELECT COUNT(o) FROM Order o
-        WHERE o.paymentStatus = 'PENDING'
-        AND o.status != 'CANCELLED'
-        AND (:orderSource IS NULL OR o.orderSource = :orderSource)
-    """)
-    long countPendingPaymentOrders(@Param("orderSource") String orderSource);
+//    @Query("""
+//        SELECT COUNT(o) FROM Order o
+//        WHERE o.paymentStatus = 'PENDING'
+//        AND o.status != 'CANCELLED'
+//        AND (:orderSource IS NULL OR o.orderSource = :orderSource)
+//    """)
+//    long countPendingPaymentOrders(@Param("orderSource") String orderSource);
 }

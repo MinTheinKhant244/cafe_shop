@@ -1,7 +1,6 @@
 package com.hmi.cafe_shop.serviceImpl;
 
 import com.hmi.cafe_shop.dto.OrderRequestDTO;
-import com.hmi.cafe_shop.dto.OrderSummaryDTO;
 import com.hmi.cafe_shop.dto.StockCheckRequest;
 import com.hmi.cafe_shop.dto.StockCheckResponse;
 import com.hmi.cafe_shop.entity.*;
@@ -190,7 +189,7 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(request.getTotalAmount());
         order.setPaymentStatus(request.getPaymentStatus() != null ? request.getPaymentStatus() : "PENDING");
         order.setOrderSource(request.getOrderSource());
-        order.setStatus(request.getStatus() != null ? request.getStatus() : "PREPARING");
+        order.setStatus(request.getStatus() != null ? request.getStatus() : "PENDING");
         order.setOrderNote(request.getOrderNote());
         order.setPaymentMethod(request.getPaymentMethod());
         
@@ -549,42 +548,42 @@ public class OrderServiceImpl implements OrderService {
     /**
      * 2. Get order summary for cashier dashboard
      */
-    @Override
-    @Transactional(readOnly = true)
-    public OrderSummaryDTO getOrderSummary() {
-        log.info("Fetching order summary for cashier dashboard");
-        
-        LocalDate today = LocalDate.now();
-        
-        // Get today's order summary from repository
-        Map<String, Object> summary = orderRepository.findTodayOrderSummary(today);
-        
-        // ✅ Updated field names for 4 statuses
-        long pendingOrders = summary.get("pendingOrders") != null ? 
-            ((Number) summary.get("pendingOrders")).longValue() : 0;
-        long preparingOrders = summary.get("preparingOrders") != null ? 
-            ((Number) summary.get("preparingOrders")).longValue() : 0;
-        long completedOrders = summary.get("completedOrders") != null ? 
-            ((Number) summary.get("completedOrders")).longValue() : 0;
-        long cancelledOrders = summary.get("cancelledOrders") != null ? 
-            ((Number) summary.get("cancelledOrders")).longValue() : 0;
-        long pendingPaymentOrders = summary.get("pendingPaymentOrders") != null ? 
-            ((Number) summary.get("pendingPaymentOrders")).longValue() : 0;
-        double todayRevenue = summary.get("todayRevenue") != null ? 
-            ((Number) summary.get("todayRevenue")).doubleValue() : 0;
-        long totalOrdersToday = summary.get("totalOrdersToday") != null ? 
-            ((Number) summary.get("totalOrdersToday")).longValue() : 0;
-        
-        return new OrderSummaryDTO(
-            pendingOrders,
-            preparingOrders,
-            completedOrders,
-            cancelledOrders,
-            pendingPaymentOrders,
-            todayRevenue,
-            totalOrdersToday
-        );
-    }
+//    @Override
+//    @Transactional(readOnly = true)
+//    public OrderSummaryDTO getOrderSummary() {
+//        log.info("Fetching order summary for cashier dashboard");
+//        
+//        LocalDate today = LocalDate.now();
+//        
+//        // Get today's order summary from repository
+//        Map<String, Object> summary = orderRepository.findTodayOrderSummary(today);
+//        
+//        // ✅ Updated field names for 4 statuses
+//        long pendingOrders = summary.get("pendingOrders") != null ? 
+//            ((Number) summary.get("pendingOrders")).longValue() : 0;
+//        long preparingOrders = summary.get("preparingOrders") != null ? 
+//            ((Number) summary.get("preparingOrders")).longValue() : 0;
+//        long completedOrders = summary.get("completedOrders") != null ? 
+//            ((Number) summary.get("completedOrders")).longValue() : 0;
+//        long cancelledOrders = summary.get("cancelledOrders") != null ? 
+//            ((Number) summary.get("cancelledOrders")).longValue() : 0;
+//        long pendingPaymentOrders = summary.get("pendingPaymentOrders") != null ? 
+//            ((Number) summary.get("pendingPaymentOrders")).longValue() : 0;
+//        double todayRevenue = summary.get("todayRevenue") != null ? 
+//            ((Number) summary.get("todayRevenue")).doubleValue() : 0;
+//        long totalOrdersToday = summary.get("totalOrdersToday") != null ? 
+//            ((Number) summary.get("totalOrdersToday")).longValue() : 0;
+//        
+//        return new OrderSummaryDTO(
+//            pendingOrders,
+//            preparingOrders,
+//            completedOrders,
+//            cancelledOrders,
+//            pendingPaymentOrders,
+//            todayRevenue,
+//            totalOrdersToday
+//        );
+//    }
 
     /**
      * 3. Update order status for cashier (with validation)
@@ -764,66 +763,62 @@ public class OrderServiceImpl implements OrderService {
         return savedOrder;
     }
 
-    /**
-     * Get pending payment orders
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public List<Order> getPendingPaymentOrders(String orderSource) {
-        log.info("Fetching pending payment orders - source: {}", orderSource);
-        return orderRepository.findPendingPaymentOrders(orderSource);
-    }
+//      Get pending payment orders
+//    @Override
+//    @Transactional(readOnly = true)
+//    public List<Order> getPendingPaymentOrders(String orderSource) {
+//        log.info("Fetching pending payment orders - source: {}", orderSource);
+//        return orderRepository.findPendingPaymentOrders(orderSource);
+//    }
 
-    /**
-     * Get today's revenue summary
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public Map<String, Object> getTodayRevenue() {
-        log.info("Fetching today's revenue");
-        
-        LocalDate today = LocalDate.now();
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
-        
-        List<Order> todayOrders = orderRepository.findByCreatedAtBetween(startOfDay, endOfDay);
-        
-        long totalOrders = todayOrders.size();
-        long completedOrders = todayOrders.stream()
-                .filter(o -> "COMPLETED".equals(o.getStatus()))
-                .count();
-        long cancelledOrders = todayOrders.stream()
-                .filter(o -> "CANCELLED".equals(o.getStatus()))
-                .count();
-        
-        double totalRevenue = todayOrders.stream()
-                .filter(o -> "COMPLETED".equals(o.getStatus()))
-                .mapToDouble(Order::getTotalAmount)
-                .sum();
-        
-        double cashRevenue = todayOrders.stream()
-                .filter(o -> "COMPLETED".equals(o.getStatus()))
-                .filter(o -> "CASH".equals(o.getPaymentMethod()))
-                .mapToDouble(Order::getTotalAmount)
-                .sum();
-        
-        double cardRevenue = todayOrders.stream()
-                .filter(o -> "COMPLETED".equals(o.getStatus()))
-                .filter(o -> "CARD".equals(o.getPaymentMethod()) || "KPAY".equals(o.getPaymentMethod()) || "WAVE".equals(o.getPaymentMethod()))
-                .mapToDouble(Order::getTotalAmount)
-                .sum();
-        
-        Map<String, Object> revenue = new HashMap<>();
-        revenue.put("date", today.toString());
-        revenue.put("totalOrders", totalOrders);
-        revenue.put("completedOrders", completedOrders);
-        revenue.put("cancelledOrders", cancelledOrders);
-        revenue.put("totalRevenue", totalRevenue);
-        revenue.put("cashRevenue", cashRevenue);
-        revenue.put("cardRevenue", cardRevenue);
-        
-        return revenue;
-    }
+//    Get today's revenue summary
+//    @Override
+//    @Transactional(readOnly = true)
+//    public Map<String, Object> getTodayRevenue() {
+//        log.info("Fetching today's revenue");
+//        
+//        LocalDate today = LocalDate.now();
+//        LocalDateTime startOfDay = today.atStartOfDay();
+//        LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
+//        
+//        List<Order> todayOrders = orderRepository.findByCreatedAtBetween(startOfDay, endOfDay);
+//        
+//        long totalOrders = todayOrders.size();
+//        long completedOrders = todayOrders.stream()
+//                .filter(o -> "COMPLETED".equals(o.getStatus()))
+//                .count();
+//        long cancelledOrders = todayOrders.stream()
+//                .filter(o -> "CANCELLED".equals(o.getStatus()))
+//                .count();
+//        
+//        double totalRevenue = todayOrders.stream()
+//                .filter(o -> "COMPLETED".equals(o.getStatus()))
+//                .mapToDouble(Order::getTotalAmount)
+//                .sum();
+//        
+//        double cashRevenue = todayOrders.stream()
+//                .filter(o -> "COMPLETED".equals(o.getStatus()))
+//                .filter(o -> "CASH".equals(o.getPaymentMethod()))
+//                .mapToDouble(Order::getTotalAmount)
+//                .sum();
+//        
+//        double cardRevenue = todayOrders.stream()
+//                .filter(o -> "COMPLETED".equals(o.getStatus()))
+//                .filter(o -> "CARD".equals(o.getPaymentMethod()) || "KPAY".equals(o.getPaymentMethod()) || "WAVE".equals(o.getPaymentMethod()))
+//                .mapToDouble(Order::getTotalAmount)
+//                .sum();
+//        
+//        Map<String, Object> revenue = new HashMap<>();
+//        revenue.put("date", today.toString());
+//        revenue.put("totalOrders", totalOrders);
+//        revenue.put("completedOrders", completedOrders);
+//        revenue.put("cancelledOrders", cancelledOrders);
+//        revenue.put("totalRevenue", totalRevenue);
+//        revenue.put("cashRevenue", cashRevenue);
+//        revenue.put("cardRevenue", cardRevenue);
+//        
+//        return revenue;
+//    }
 
     // ============================================================
     // PRIVATE HELPER METHODS

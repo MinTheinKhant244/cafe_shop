@@ -137,7 +137,7 @@ function PosSales() {
         totalAmount: totalAmount,
         paymentStatus: "PENDING",
         orderSource: orderSource, // ✅ DINE_IN, TAKEAWAY, DELIVERY
-        status: "PREPARING",
+        status: "PENDING",
         orderItems: items.map(item => ({
           productId: item.id,
           quantity: item.quantity,

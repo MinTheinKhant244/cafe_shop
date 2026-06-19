@@ -131,7 +131,7 @@ function Cart({ onOrderSuccess, onClose, selectedTableId, orderSource = "DINE_IN
         totalAmount: totalAmount,
         paymentStatus: "PENDING",
         orderSource: orderSource,
-        status: "PREPARING",
+        status: "PENDING",
         orderItems: items.map(item => ({
           productId: item.id,
           quantity: item.quantity,

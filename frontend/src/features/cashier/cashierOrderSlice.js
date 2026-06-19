@@ -3,6 +3,59 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../app/api";
 
 // ============================================
+// HELPER: Get Date Range - Return YYYY-MM-DD format
+// ============================================
+const getDateRange = (dateRange) => {
+  const today = new Date();
+  let startDate, endDate;
+  
+  switch (dateRange) {
+    case "TODAY":
+      startDate = new Date(today);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+      
+    case "YESTERDAY":
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      startDate = new Date(yesterday);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(yesterday);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+      
+    case "THIS_WEEK":
+      const weekStart = new Date(today);
+      const day = weekStart.getDay();
+      weekStart.setDate(weekStart.getDate() - day);
+      weekStart.setHours(0, 0, 0, 0);
+      startDate = weekStart;
+      endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+      
+    case "THIS_MONTH":
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      monthStart.setHours(0, 0, 0, 0);
+      startDate = monthStart;
+      endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+      
+    default:
+      return null;
+  }
+  
+  // Return YYYY-MM-DD format only
+  return { 
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0]
+  };
+};
+
+// ============================================
 // FETCH ORDERS WITH FILTERS
 // ============================================
 export const fetchCashierOrders = createAsyncThunk(
@@ -14,18 +67,28 @@ export const fetchCashierOrders = createAsyncThunk(
       if (filters.status && filters.status !== "ALL") {
         params.append("status", filters.status);
       }
+      
       if (filters.orderSource && filters.orderSource !== "ALL") {
         params.append("orderSource", filters.orderSource);
       }
+      
+      if (filters.dateRange && filters.dateRange !== "ALL") {
+        const dateRange = getDateRange(filters.dateRange);
+        if (dateRange) {
+          params.append("startDate", dateRange.startDate);
+          params.append("endDate", dateRange.endDate);
+        }
+      }
+      
       if (filters.search) {
         params.append("search", filters.search);
-      }
-      if (filters.dateRange && filters.dateRange !== "ALL") {
-        params.append("dateRange", filters.dateRange);
       }
       
       const queryString = params.toString();
       const url = queryString ? `/orders/cashier/orders?${queryString}` : "/orders/cashier/orders";
+      
+      console.log("📡 API Request URL:", url);
+      console.log("📡 Filters:", filters);
       
       const response = await api.get(url);
       return response.data;
@@ -38,21 +101,57 @@ export const fetchCashierOrders = createAsyncThunk(
 );
 
 // ============================================
-// FETCH ORDER SUMMARY
+// HELPER: Calculate Summary from Orders
+// ✅ FIXED: Revenue and Total Orders based on filtered orders
 // ============================================
-export const fetchOrderSummary = createAsyncThunk(
-  "cashierOrders/fetchSummary",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get("/orders/cashier/summary");
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch summary"
-      );
-    }
+const calculateSummaryFromOrders = (orders) => {
+  if (!orders || orders.length === 0) {
+    return {
+      pendingOrders: 0,
+      preparingOrders: 0,
+      completedOrders: 0,
+      cancelledOrders: 0,
+      pendingPaymentOrders: 0,
+      todayRevenue: 0,
+      totalOrdersToday: 0
+    };
   }
-);
+
+  // ✅ Status counts from filtered orders
+  const pendingOrders = orders.filter(o => o.status === "PENDING").length;
+  const preparingOrders = orders.filter(o => o.status === "PREPARING").length;
+  const completedOrders = orders.filter(o => o.status === "COMPLETED").length;
+  const cancelledOrders = orders.filter(o => o.status === "CANCELLED").length;
+  const pendingPaymentOrders = orders.filter(o => o.paymentStatus === "PENDING" && o.status !== "CANCELLED").length;
+  
+  // ✅ FIXED: Revenue from filtered orders (not just today)
+  const revenue = orders
+    .filter(o => o.status === "COMPLETED" || o.paymentStatus === "PAID")
+    .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  
+  // ✅ FIXED: Total orders from filtered orders (not just today)
+  const totalOrders = orders.length;
+
+  console.log("📊 Calculated Summary:", {
+    totalOrders,
+    pendingOrders,
+    preparingOrders,
+    completedOrders,
+    cancelledOrders,
+    pendingPaymentOrders,
+    revenue
+  });
+
+  return {
+    pendingOrders,
+    preparingOrders,
+    completedOrders,
+    cancelledOrders,
+    pendingPaymentOrders,
+    todayRevenue: revenue,        // ✅ Filter ပေါ်မူတည်ပြီး
+    totalOrdersToday: totalOrders // ✅ Filter ပေါ်မူတည်ပြီး
+  };
+};
 
 // ============================================
 // FETCH ORDER BY ID
@@ -91,7 +190,7 @@ export const updateOrderStatus = createAsyncThunk(
 );
 
 // ============================================
-// UPDATE PAYMENT STATUS (Single API call)
+// UPDATE PAYMENT STATUS
 // ============================================
 export const updatePaymentStatus = createAsyncThunk(
   "cashierOrders/updatePayment",
@@ -127,7 +226,7 @@ export const cancelOrder = createAsyncThunk(
 );
 
 // ============================================
-// 🆕 PROCESS FULL PAYMENT (Payment + Complete)
+// PROCESS FULL PAYMENT
 // ============================================
 export const processPayment = createAsyncThunk(
   "cashierOrders/processPayment",
@@ -153,7 +252,7 @@ export const processPayment = createAsyncThunk(
 );
 
 // ============================================
-// 🆕 FETCH PENDING PAYMENT ORDERS
+// FETCH PENDING PAYMENT ORDERS
 // ============================================
 export const fetchPendingPayments = createAsyncThunk(
   "cashierOrders/fetchPendingPayments",
@@ -174,23 +273,6 @@ export const fetchPendingPayments = createAsyncThunk(
 );
 
 // ============================================
-// 🆕 FETCH TODAY'S REVENUE
-// ============================================
-export const fetchTodayRevenue = createAsyncThunk(
-  "cashierOrders/fetchTodayRevenue",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get("/orders/cashier/today-revenue");
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Failed to fetch revenue"
-      );
-    }
-  }
-);
-
-// ============================================
 // SLICE
 // ============================================
 const cashierOrderSlice = createSlice({
@@ -199,8 +281,8 @@ const cashierOrderSlice = createSlice({
   initialState: {
     orders: [],
     selectedOrder: null,
-    pendingPayments: [],        // 🆕
-    revenue: null,              // 🆕
+    pendingPayments: [],
+    revenue: null,
     summary: {
       pendingOrders: 0,
       preparingOrders: 0,
@@ -254,34 +336,14 @@ const cashierOrderSlice = createSlice({
       .addCase(fetchCashierOrders.fulfilled, (state, action) => {
         state.loading = false;
         state.orders = action.payload || [];
+        // ✅ Auto-calculate summary from orders
+        state.summary = calculateSummaryFromOrders(state.orders);
       })
       .addCase(fetchCashierOrders.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
         state.orders = [];
-      })
-      
-      // ===== FETCH SUMMARY =====
-      .addCase(fetchOrderSummary.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchOrderSummary.fulfilled, (state, action) => {
-        state.loading = false;
-        const data = action.payload || {};
-        state.summary = {
-          pendingOrders: data.pendingOrders || 0,
-          preparingOrders: data.preparingOrders || 0,
-          completedOrders: data.completedOrders || 0,
-          cancelledOrders: data.cancelledOrders || 0,
-          pendingPaymentOrders: data.pendingPaymentOrders || 0,
-          todayRevenue: data.todayRevenue || 0,
-          totalOrdersToday: data.totalOrdersToday || 0
-        };
-      })
-      .addCase(fetchOrderSummary.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+        state.summary = calculateSummaryFromOrders([]);
       })
       
       // ===== FETCH BY ID =====
@@ -315,6 +377,8 @@ const cashierOrderSlice = createSlice({
           if (state.selectedOrder?.id === updatedOrder.id) {
             state.selectedOrder = updatedOrder;
           }
+          // ✅ Recalculate summary
+          state.summary = calculateSummaryFromOrders(state.orders);
         }
       })
       .addCase(updateOrderStatus.rejected, (state, action) => {
@@ -338,6 +402,8 @@ const cashierOrderSlice = createSlice({
           if (state.selectedOrder?.id === updatedOrder.id) {
             state.selectedOrder = updatedOrder;
           }
+          // ✅ Recalculate summary
+          state.summary = calculateSummaryFromOrders(state.orders);
         }
       })
       .addCase(updatePaymentStatus.rejected, (state, action) => {
@@ -361,6 +427,8 @@ const cashierOrderSlice = createSlice({
           if (state.selectedOrder?.id === updatedOrder.id) {
             state.selectedOrder = updatedOrder;
           }
+          // ✅ Recalculate summary
+          state.summary = calculateSummaryFromOrders(state.orders);
         }
       })
       .addCase(cancelOrder.rejected, (state, action) => {
@@ -384,6 +452,8 @@ const cashierOrderSlice = createSlice({
           if (state.selectedOrder?.id === updatedOrder.id) {
             state.selectedOrder = updatedOrder;
           }
+          // ✅ Recalculate summary
+          state.summary = calculateSummaryFromOrders(state.orders);
         }
       })
       .addCase(processPayment.rejected, (state, action) => {
@@ -391,7 +461,7 @@ const cashierOrderSlice = createSlice({
         state.error = action.payload;
       })
       
-      // ===== 🆕 FETCH PENDING PAYMENTS =====
+      // ===== FETCH PENDING PAYMENTS =====
       .addCase(fetchPendingPayments.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -404,21 +474,6 @@ const cashierOrderSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.pendingPayments = [];
-      })
-      
-      // ===== 🆕 FETCH TODAY'S REVENUE =====
-      .addCase(fetchTodayRevenue.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchTodayRevenue.fulfilled, (state, action) => {
-        state.loading = false;
-        state.revenue = action.payload;
-      })
-      .addCase(fetchTodayRevenue.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-        state.revenue = null;
       });
   }
 });

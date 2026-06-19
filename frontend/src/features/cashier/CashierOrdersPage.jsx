@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   fetchCashierOrders,
-  fetchOrderSummary,
   updateOrderStatus,
   updatePaymentStatus,
   cancelOrder,
@@ -13,7 +12,6 @@ import {
 } from "./cashierOrderSlice";
 import { toggleSidebar } from "../../app/uiSlice";
 import Sidebar from "../../components/Sidebar";
-import api from "../../app/api";
 import styles from "../../assets/css/cashierOrder.module.css";
 
 function CashierOrdersPage() {
@@ -41,17 +39,20 @@ function CashierOrdersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState("");
 
+  // ✅ Auto-filter when localFilters change
+  useEffect(() => {
+    console.log("Auto-applying filters:", localFilters);
+    dispatch(setFilters(localFilters));
+    dispatch(fetchCashierOrders(localFilters));
+  }, [localFilters, dispatch]);
+
   useEffect(() => {
     console.log("Current filters:", filters);
     console.log("Orders count:", orders?.length);
     console.log("Order sources:", orders?.map(o => o.orderSource));
   }, [orders, filters]);
 
-  useEffect(() => {
-    dispatch(fetchCashierOrders(filters));
-    dispatch(fetchOrderSummary());
-  }, [dispatch, filters]);
-
+  // ✅ Notification timer
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), 3000);
@@ -69,12 +70,6 @@ function CashierOrdersPage() {
     setLocalFilters(newFilters);
   };
 
-  const handleApplyFilters = () => {
-    console.log("Applying filters:", localFilters);
-    dispatch(setFilters(localFilters));
-    dispatch(fetchCashierOrders(localFilters));
-  };
-
   const handleResetFilters = () => {
     const defaultFilters = {
       status: "ALL",
@@ -89,7 +84,7 @@ function CashierOrdersPage() {
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
-      handleApplyFilters();
+      console.log("Search triggered with:", localFilters.search);
     }
   };
 
@@ -97,7 +92,7 @@ function CashierOrdersPage() {
     try {
       await dispatch(updateOrderStatus({ id: orderId, status })).unwrap();
       showNotification(`Order status updated to ${status}`, "success");
-      dispatch(fetchOrderSummary());
+      dispatch(fetchCashierOrders(localFilters));
     } catch (error) {
       showNotification(error || "Failed to update status", "error");
     }
@@ -139,8 +134,7 @@ function CashierOrdersPage() {
       setSelectedOrder(null);
       setCashReceived("");
       
-      await dispatch(fetchCashierOrders(filters));
-      await dispatch(fetchOrderSummary());
+      await dispatch(fetchCashierOrders(localFilters));
       
       showNotification(`Payment for ${selectedOrder.invoiceNo} completed successfully!`, "success");
       
@@ -157,7 +151,7 @@ function CashierOrdersPage() {
     try {
       await dispatch(cancelOrder(orderId)).unwrap();
       showNotification("Order cancelled successfully", "success");
-      dispatch(fetchOrderSummary());
+      dispatch(fetchCashierOrders(localFilters));
     } catch (error) {
       showNotification(error || "Failed to cancel order", "error");
     }
@@ -192,13 +186,13 @@ function CashierOrdersPage() {
     return !["COMPLETED", "CANCELLED"].includes(status);
   };
 
-  // ✅ Check if order can be paid
   const canPay = (order) => {
     if (!order) return false;
     return order.paymentStatus === "PENDING" && 
            order.status !== "CANCELLED";
   };
 
+  // ✅ Stats from summary (auto-calculated from filtered orders)
   const stats = [
     { 
       label: "Pending", 
@@ -225,7 +219,7 @@ function CashierOrdersPage() {
       color: "#f44336" 
     },
     { 
-      label: "Today Revenue", 
+      label: "Revenue", 
       value: summary?.todayRevenue?.toLocaleString() || 0, 
       icon: "💵", 
       color: "#2e7d32",
@@ -272,17 +266,6 @@ function CashierOrdersPage() {
             </span>
           </div>
           <div className={styles.headerRight}>
-            <button 
-              className={styles.refreshBtn}
-              onClick={() => {
-                dispatch(fetchCashierOrders(filters));
-                dispatch(fetchOrderSummary());
-                showNotification("Refreshed successfully", "success");
-              }}
-              disabled={loading}
-            >
-              {loading ? "⏳" : "🔄"} Refresh
-            </button>
             <span className={styles.revenue}>
               💵 Revenue: {summary?.todayRevenue?.toLocaleString()} Ks
             </span>
@@ -366,11 +349,8 @@ function CashierOrdersPage() {
           </div>
 
           <div className={styles.filterActions}>
-            <button className={styles.applyBtn} onClick={handleApplyFilters}>
-              Apply
-            </button>
             <button className={styles.clearFiltersBtn} onClick={handleResetFilters}>
-              ✕ Clear
+              ✕ Clear Filters
             </button>
           </div>
         </div>
@@ -462,9 +442,7 @@ function CashierOrdersPage() {
                     </div>
                   )}
 
-                  {/* ✅ PayNow Button - Top Position */}
                   <div className={styles.orderActions}>
-                    {/* ✅ Pay Now Button - Always on top for unpaid orders */}
                     {canPay(order) && (
                       <button 
                         className={styles.paymentBtn}
@@ -619,15 +597,21 @@ function CashierOrdersPage() {
                     <div className={styles.changeAmount}>
                       <span>Change:</span>
                       <span className={styles.changeValue}>
-                        {getChangeAmount().toLocaleString()} Ks
+                        {(() => {
+                          const change = parseFloat(cashReceived) - selectedOrder.totalAmount;
+                          return change.toLocaleString() + " Ks";
+                        })()}
                       </span>
                     </div>
                   )}
-                  {cashReceived && getChangeAmount() < 0 && (
-                    <div className={styles.insufficientWarning}>
-                      ⚠️ Insufficient amount. Please enter at least {selectedOrder.totalAmount?.toLocaleString()} Ks
-                    </div>
-                  )}
+                  {cashReceived && (() => {
+                    const change = parseFloat(cashReceived) - selectedOrder.totalAmount;
+                    return change < 0 && (
+                      <div className={styles.insufficientWarning}>
+                        ⚠️ Insufficient amount. Please enter at least {selectedOrder.totalAmount?.toLocaleString()} Ks
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -671,7 +655,10 @@ function CashierOrdersPage() {
                   onClick={handleConfirmPayment}
                   disabled={
                     isProcessing || 
-                    (paymentMethod === "CASH" && (!cashReceived || getChangeAmount() < 0))
+                    (paymentMethod === "CASH" && (!cashReceived || (() => {
+                      const change = parseFloat(cashReceived) - selectedOrder.totalAmount;
+                      return change < 0;
+                    })()))
                   }
                 >
                   {isProcessing ? "⏳ Processing..." : "✅ Confirm Payment"}

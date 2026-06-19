@@ -23,7 +23,7 @@ export const sidebarItems = [
     title: "Orders",
     path: "/orders",
     icon: "fa-receipt",
-    roles: ["ADMIN", "CASHIER"]
+    roles: ["ADMIN"]
   },
   {
     title: "Products",
@@ -42,6 +42,12 @@ export const sidebarItems = [
     path: "/admin/categories",
     icon: "fa-tags",
     roles: ["ADMIN"]
+  },
+  {
+    title: "Tables",
+    path: "/tables",
+    icon: "fa-table-list",
+    roles: ["ADMIN", "CASHIER"]
   },
   {
     title: "Inventory",
@@ -66,13 +72,6 @@ export const sidebarItems = [
     path: "/admin/reports",
     icon: "fa-chart-bar",
     roles: ["ADMIN"]
-  },
-
-  {
-    title: "Tables",
-    path: "/tables",
-    icon: "fa-table-list",
-    roles: ["ADMIN", "CASHIER"]
   }
 
 ];

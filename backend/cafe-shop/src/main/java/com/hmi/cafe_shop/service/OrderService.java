@@ -1,7 +1,6 @@
 package com.hmi.cafe_shop.service;
 
 import com.hmi.cafe_shop.dto.OrderRequestDTO;
-import com.hmi.cafe_shop.dto.OrderSummaryDTO;
 import com.hmi.cafe_shop.dto.StockCheckRequest;
 import com.hmi.cafe_shop.dto.StockCheckResponse;
 import com.hmi.cafe_shop.entity.Order;
@@ -38,7 +37,7 @@ public interface OrderService {
                                  String search);
 
 //    2. Get order summary for cashier dashboard
-    OrderSummaryDTO getOrderSummary();
+//    OrderSummaryDTO getOrderSummary();
 
 //    3. Update order status for cashier (with validation)
     Order updateCashierOrderStatus(Long id, String status);
@@ -49,7 +48,7 @@ public interface OrderService {
  // ===== 🆕 PAYMENT METHODS =====
     Order processPayment(Long id, String paymentMethod, Double cashReceived);
     
-    List<Order> getPendingPaymentOrders(String orderSource);
+//    List<Order> getPendingPaymentOrders(String orderSource);
     
-    Map<String, Object> getTodayRevenue();
+//    Map<String, Object> getTodayRevenue();
 }

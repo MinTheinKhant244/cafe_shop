@@ -89,6 +89,53 @@ function InventoryTransaction() {
     }
   }, [selectedInventoryId, useDateRange, dispatch]);
 
+  // ✅ FIXED: Date Range auto search - တဖက်တည်းထည့်ရင်လည်း search လုပ်မယ်
+  useEffect(() => {
+    if (dateRange.start && dateRange.end) {
+      // နှစ်ဖက်လုံးရှိရင် range နဲ့ search
+      setUseDateRange(true);
+      setSelectedInventoryId("");
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      
+      dispatch(getTxByDateRange({ 
+        start: startDate.toISOString(), 
+        end: endDate.toISOString() 
+      }));
+    } else if (dateRange.start && !dateRange.end) {
+      // start ဘဲရှိရင် အဲ့တရက်စာ search
+      setUseDateRange(true);
+      setSelectedInventoryId("");
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.start);
+      endDate.setHours(23, 59, 59, 999);
+      
+      dispatch(getTxByDateRange({ 
+        start: startDate.toISOString(), 
+        end: endDate.toISOString() 
+      }));
+    } else if (!dateRange.start && dateRange.end) {
+      // end ဘဲရှိရင် အဲ့တရက်စာ search
+      setUseDateRange(true);
+      setSelectedInventoryId("");
+      const startDate = new Date(dateRange.end);
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      
+      dispatch(getTxByDateRange({ 
+        start: startDate.toISOString(), 
+        end: endDate.toISOString() 
+      }));
+    } else if (!dateRange.start && !dateRange.end) {
+      // နှစ်ဖက်လုံးမရှိရင် reset
+      if (useDateRange) {
+        setUseDateRange(false);
+        dispatch(resetTx());
+      }
+    }
+  }, [dateRange.start, dateRange.end, dispatch]);
+
   // Handle URL parameter
   useEffect(() => {
     if (itemIdFromUrl && itemIdFromUrl !== "") {
@@ -113,17 +160,6 @@ function InventoryTransaction() {
       dispatch(clearTxError());
     }
   }, [reduxError, dispatch]);
-
-  // Handle Date Range Search
-  const handleDateRangeSearch = async () => {
-    if (dateRange.start && dateRange.end) {
-      setUseDateRange(true);
-      setSelectedInventoryId("");
-      await dispatch(getTxByDateRange({ start: dateRange.start, end: dateRange.end }));
-    } else {
-      showNotification("Please select both start and end dates", "error");
-    }
-  };
 
   // Clear Date Range
   const clearDateRange = () => {
@@ -218,8 +254,7 @@ function InventoryTransaction() {
       STOCK_OUT: { class: styles.typeStockOut, icon: "📤", text: "Stock Out" },
       ADJUSTMENT: { class: styles.typeAdjustment, icon: "⚙️", text: "Adjustment" },
       INITIAL: { class: styles.typeInitial, icon: "🏁", text: "Initial" },
-      RETURN: { class: styles.typeReturn, icon: "↩️", text: "Return" },
-      WASTAGE: { class: styles.typeWastage, icon: "⚠️", text: "Wastage" }
+      ORDER_CANCEL: { class: styles.typeReturn, icon: "↩️", text: "Order_Cancel" },
     };
     return badges[type] || { class: styles.typeDefault, icon: "📋", text: type };
   };
@@ -409,19 +444,18 @@ function InventoryTransaction() {
             <label>Date Range</label>
             <div className={styles.dateRangeGroup}>
               <input
-                type="datetime-local"
+                type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                placeholder="Start Date"
               />
               <span>to</span>
               <input
-                type="datetime-local"
+                type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                placeholder="End Date"
               />
-              <button onClick={handleDateRangeSearch} className={styles.searchBtn}>
-                🔍 Search
-              </button>
             </div>
           </div>
 
@@ -435,8 +469,7 @@ function InventoryTransaction() {
               <option value="STOCK_IN">📥 Stock In</option>
               <option value="STOCK_OUT">📤 Stock Out</option>
               <option value="ADJUSTMENT">⚙️ Adjustment</option>
-              <option value="WASTAGE">⚠️ Wastage</option>
-              <option value="RETURN">↩️ Return</option>
+              <option value="ORDER_CANCEL">↩️ Order_Cancel</option>
               <option value="INITIAL">🏁 Initial</option>
             </select>
           </div>

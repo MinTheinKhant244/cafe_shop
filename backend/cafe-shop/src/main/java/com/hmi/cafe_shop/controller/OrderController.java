@@ -1,7 +1,6 @@
 package com.hmi.cafe_shop.controller;
 
 import com.hmi.cafe_shop.dto.OrderRequestDTO;
-import com.hmi.cafe_shop.dto.OrderSummaryDTO;
 import com.hmi.cafe_shop.dto.StockCheckRequest;
 import com.hmi.cafe_shop.dto.StockCheckResponse;
 import com.hmi.cafe_shop.entity.Order;
@@ -105,10 +104,10 @@ public class OrderController {
     }
 
 //    10. CASHIER - Get order summary for dashboard
-    @GetMapping("/cashier/summary")
-    public ResponseEntity<OrderSummaryDTO> getOrderSummary() {
-        return ResponseEntity.ok(orderService.getOrderSummary());
-    }
+//    @GetMapping("/cashier/summary")
+//    public ResponseEntity<OrderSummaryDTO> getOrderSummary() {
+//        return ResponseEntity.ok(orderService.getOrderSummary());
+//    }
 
 //    11. CASHIER - Update order status (with validation)
     @PatchMapping("/cashier/status/{id}")
@@ -162,15 +161,15 @@ public class OrderController {
     }
 
 //    15. CASHIER - Get pending payment orders
-    @GetMapping("/cashier/pending-payments")
-    public ResponseEntity<List<Order>> getPendingPaymentOrders(
-            @RequestParam(required = false) String orderSource) {
-        return ResponseEntity.ok(orderService.getPendingPaymentOrders(orderSource));
-    }
+//    @GetMapping("/cashier/pending-payments")
+//    public ResponseEntity<List<Order>> getPendingPaymentOrders(
+//            @RequestParam(required = false) String orderSource) {
+//        return ResponseEntity.ok(orderService.getPendingPaymentOrders(orderSource));
+//    }
 
 //    16. CASHIER - Get today's revenue summary
-    @GetMapping("/cashier/today-revenue")
-    public ResponseEntity<Map<String, Object>> getTodayRevenue() {
-        return ResponseEntity.ok(orderService.getTodayRevenue());
-    }
+//    @GetMapping("/cashier/today-revenue")
+//    public ResponseEntity<Map<String, Object>> getTodayRevenue() {
+//        return ResponseEntity.ok(orderService.getTodayRevenue());
+//    }
 }
