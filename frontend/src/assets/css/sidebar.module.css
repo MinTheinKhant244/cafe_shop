@@ -1,4 +1,6 @@
-/* Sidebar Container */
+/* ============================================ */
+/* SIDEBAR CONTAINER - BASE STYLES */
+/* ============================================ */
 .sidebar {
   width: 70px;
   height: 100vh;
@@ -12,21 +14,27 @@
   z-index: 1000;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-x: hidden;
-  overflow-y: hidden; /* Hide main scrollbar */
+  overflow-y: hidden;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Expanded Sidebar */
+/* ============================================ */
+/* EXPANDED SIDEBAR - DESKTOP */
+/* ============================================ */
 .sidebar.expanded {
   width: 260px;
 }
 
-/* Mobile Sidebar */
+/* ============================================ */
+/* MOBILE SIDEBAR */
+/* ============================================ */
 .sidebar.mobile {
   box-shadow: 2px 0 20px rgba(0, 0, 0, 0.2);
 }
 
-/* Mobile Overlay */
+/* ============================================ */
+/* MOBILE OVERLAY */
+/* ============================================ */
 .overlay {
   position: fixed;
   top: 0;
@@ -54,8 +62,9 @@
   padding: 20px 16px;
   margin-bottom: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
   background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  min-height: 80px;
 }
 
 .logoWrapper {
@@ -66,10 +75,12 @@
   justify-content: center;
   background: rgba(243, 168, 7, 0.15);
   border-radius: 12px;
+  flex-shrink: 0;
 }
 
 .brandInfo {
   flex: 1;
+  min-width: 0;
 }
 
 .brandName {
@@ -78,6 +89,7 @@
   font-weight: 700;
   font-size: 1.2rem;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .brandSubtitle {
@@ -85,6 +97,7 @@
   color: rgba(255, 255, 255, 0.5);
   font-size: 0.7rem;
   margin-top: 2px;
+  white-space: nowrap;
 }
 
 /* ============================================ */
@@ -94,7 +107,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  min-height: 0; /* Important for flex child scrolling */
+  min-height: 0;
 }
 
 /* Custom scrollbar for menu container */
@@ -138,18 +151,22 @@
   position: relative;
   margin: 0 8px;
   border-radius: 12px;
+  white-space: nowrap;
 }
 
 .sidebarMenu li a i {
   width: 24px;
   font-size: 1.2rem;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .sidebarMenu li a .menuText {
   font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s ease;
 }
 
 /* Active Menu Item */
@@ -184,7 +201,7 @@
 /* LOGOUT SECTION - FIXED AT BOTTOM */
 /* ============================================ */
 .logoutSection {
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
   padding: 16px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   background: linear-gradient(180deg, #16213e 0%, #1a1a2e 100%);
@@ -204,11 +221,13 @@
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .logoutBtn i {
   width: 24px;
   font-size: 1.2rem;
+  flex-shrink: 0;
 }
 
 .logoutBtn:hover {
@@ -240,10 +259,12 @@
   align-items: center;
   justify-content: center;
   font-size: 1.2rem;
+  flex-shrink: 0;
 }
 
 .userDetails {
   flex: 1;
+  min-width: 0;
 }
 
 .userRole {
@@ -386,7 +407,7 @@
 }
 
 /* ============================================ */
-/* RESPONSIVE DESIGN */
+/* RESPONSIVE DESIGN - FIXED */
 /* ============================================ */
 
 /* Tablet (768px - 1024px) */
@@ -404,13 +425,18 @@
   }
 }
 
-/* Mobile (up to 768px) */
+/* ============================================ */
+/* MOBILE (up to 768px) - FIXED VERSION */
+/* ============================================ */
 @media (max-width: 768px) {
   .sidebar {
     width: 0;
     transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Important: Don't set width: 0 with transform: translateX together */
   }
   
+  /* When expanded on mobile, show the sidebar */
   .sidebar.expanded {
     width: 260px;
     transform: translateX(0);
@@ -480,6 +506,7 @@
   
   .sidebarBrand {
     padding: 12px 16px;
+    min-height: 60px;
   }
   
   .sidebarMenu li a {
@@ -507,5 +534,40 @@
   
   .brandName {
     font-size: 1.3rem;
+  }
+}
+
+/* ============================================ */
+/* ACCESSIBILITY & UTILITY */
+/* ============================================ */
+
+/* Focus visible for keyboard navigation */
+.sidebarMenu li a:focus-visible,
+.logoutBtn:focus-visible,
+.cancelBtn:focus-visible,
+.confirmBtn:focus-visible {
+  outline: 2px solid #f3a807;
+  outline-offset: 2px;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar.expanded,
+  .overlay,
+  .confirmModal {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .sidebar {
+    display: none !important;
+  }
+  
+  .overlay {
+    display: none !important;
   }
 }

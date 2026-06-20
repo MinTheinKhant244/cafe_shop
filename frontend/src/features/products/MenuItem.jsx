@@ -169,7 +169,7 @@ function MenuItem() {
             <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
               ☰
             </button>
-            <h1 className={styles.pageTitle}>Menu Management</h1>
+            <h1 className={styles.pageTitle}>Product Management</h1>
           </div>
           <button className={styles.addBtn} onClick={() => {
             resetForm();

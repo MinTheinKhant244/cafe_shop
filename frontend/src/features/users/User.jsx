@@ -86,14 +86,14 @@ function User() {
           <button className={styles.toggleBtn} onClick={() => dispatch(toggleSidebar())}>
             ☰
           </button>
-            <h1 className={styles.pageTitle}>Staff Management</h1>
+            <h1 className={styles.pageTitle}>User Management</h1>
           </div>
           <button className={styles.addBtn} onClick={() => { 
             resetForm(); 
             setIsEditing(false); 
             setShowModal(true); 
           }}>
-            + Add Staff
+            + Add User
           </button>
         </div>
 
@@ -101,7 +101,7 @@ function User() {
         <div className={styles.statsBar}>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{users.length}</span>
-            <span className={styles.statLabel}>Total Staff</span>
+            <span className={styles.statLabel}>Total User</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{users.filter(u => u.isActive).length}</span>
@@ -238,7 +238,7 @@ function User() {
         <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>{isEditing ? "✏️ Edit Staff" : "➕ Add New Staff"}</h3>
+              <h3>{isEditing ? "✏️ Edit User" : "➕ Add New User"}</h3>
               <button className={styles.modalClose} onClick={() => setShowModal(false)}>×</button>
             </div>
             <form onSubmit={handleSave}>
@@ -298,7 +298,7 @@ function User() {
         <div className={styles.modalOverlay} onClick={() => setDetailUser(null)}>
           <div className={styles.detailModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>👤 Staff Details</h3>
+              <h3>👤 User Details</h3>
               <button className={styles.modalClose} onClick={() => setDetailUser(null)}>×</button>
             </div>
             <div className={styles.detailContent}>

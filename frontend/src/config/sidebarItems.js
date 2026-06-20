@@ -62,7 +62,7 @@ export const sidebarItems = [
     roles: ["ADMIN"]
   },
   {
-    title: "Staffs",
+    title: "Users",
     path: "/admin/staffs",
     icon: "fa-users",
     roles: ["ADMIN"]
