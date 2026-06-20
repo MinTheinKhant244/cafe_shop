@@ -68,7 +68,7 @@ function Sidebar() {
           {isExpanded && (
             <div className={styles.brandInfo}>
               <span className={styles.brandName}>Enjoy Cafe</span>
-              <span className={styles.brandSubtitle}>Restaurant POS</span>
+              <span className={styles.brandSubtitle}>Cafe POS</span>
             </div>
           )}
         </div>

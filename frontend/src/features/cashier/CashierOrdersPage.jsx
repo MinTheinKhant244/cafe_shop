@@ -12,6 +12,7 @@ import {
 } from "./cashierOrderSlice";
 import { toggleSidebar } from "../../app/uiSlice";
 import Sidebar from "../../components/Sidebar";
+import ReceiptPrinter from "../../features/orders/ReceiptPrinter";
 import styles from "../../assets/css/cashierOrder.module.css";
 
 function CashierOrdersPage() {
@@ -38,6 +39,10 @@ function CashierOrdersPage() {
   const [cashReceived, setCashReceived] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+
+  // ===== RECEIPT STATES =====
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [currentReceiptOrder, setCurrentReceiptOrder] = useState(null);
 
   // ✅ Auto-filter when localFilters change
   useEffect(() => {
@@ -102,6 +107,12 @@ function CashierOrdersPage() {
   // ===== PAYMENT FUNCTIONS =====
   // ============================================================
 
+  // ✅ Handle Print Receipt
+  const handlePrintReceipt = (order) => {
+    setCurrentReceiptOrder(order);
+    setShowReceipt(true);
+  };
+
   const handlePaymentForOrder = (order) => {
     setSelectedOrder(order);
     setPaymentMethod("CASH");
@@ -127,10 +138,15 @@ function CashierOrdersPage() {
     try {
       await dispatch(updatePaymentStatus({ 
         id: selectedOrder.id, 
+        paymentMethod: paymentMethod,
         paymentStatus: "PAID" 
       })).unwrap();
       
       setShowPaymentModal(false);
+      
+      // ✅ Show receipt after successful payment
+      handlePrintReceipt(selectedOrder);
+      
       setSelectedOrder(null);
       setCashReceived("");
       
@@ -667,6 +683,22 @@ function CashierOrdersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ============================================================
+          RECEIPT PRINTER MODAL
+      ============================================================ */}
+      {showReceipt && currentReceiptOrder && (
+        <ReceiptPrinter
+          order={currentReceiptOrder}
+          onClose={() => {
+            setShowReceipt(false);
+            setCurrentReceiptOrder(null);
+          }}
+          onPrint={() => {
+            console.log('Receipt printed successfully for:', currentReceiptOrder?.invoiceNo);
+          }}
+        />
       )}
     </div>
   );

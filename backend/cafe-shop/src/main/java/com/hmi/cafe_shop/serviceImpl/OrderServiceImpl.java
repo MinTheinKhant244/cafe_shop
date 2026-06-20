@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.UUID;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
+	private final PaymentRepository paymentRepository;
 	private final TableRepository tableRepository;
 	private final ProductRepository productRepository;
 	private final UserRepository userRepository;
@@ -448,9 +450,7 @@ public class OrderServiceImpl implements OrderService {
          }
      }
      
-     // ============================================================
-     // ✅ CASE 3: Changing to COMPLETED → Free Table
-     // ============================================================
+     //  CASE 3: Changing to COMPLETED → Free Table
      if ("COMPLETED".equals(status) && order.getTable() != null) {
          if (!"COMPLETED".equals(oldStatus)) {
              order.getTable().setStatus("AVAILABLE");
@@ -466,9 +466,7 @@ public class OrderServiceImpl implements OrderService {
          }
      }
      
-     // ============================================================
      // ✅ CASE 4: Changing FROM COMPLETED to another status → Reserve Table
-     // ============================================================
      if ("COMPLETED".equals(oldStatus) && !"COMPLETED".equals(status) && !"CANCELLED".equals(status)) {
          log.info("Order {} is being changed from COMPLETED to {}. Reserving table...", id, status);
          
@@ -495,7 +493,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public Order updatePayment(Long id, String paymentStatus) {
+    public Order updatePayment(Long id, String paymentMethod, String paymentStatus) {
         log.info("Updating order {} payment status to: {}", id, paymentStatus);
         
         if (paymentStatus == null || paymentStatus.trim().isEmpty()) {
@@ -505,17 +503,14 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + id));
         
-        String oldPaymentStatus = order.getPaymentStatus();
+        order.setPaymentMethod(paymentMethod);
         order.setPaymentStatus(paymentStatus);
         Order updatedOrder = orderRepository.save(order);
         
-        log.info("Order payment status updated from '{}' to '{}' for order ID: {}", 
-            oldPaymentStatus, paymentStatus, id);
         return updatedOrder;
     }
     
     // ========== 🆕 CASHIER API METHODS ==========
-    // ============================================================
 
     /**
      * 1. Get cashier orders with filters
@@ -704,64 +699,64 @@ public class OrderServiceImpl implements OrderService {
     /**
      * Process full payment - Update payment status AND complete order
      */
-    @Override
-    @Transactional
-    public Order processPayment(Long id, String paymentMethod, Double cashReceived) {
-        log.info("Processing payment for order: {}", id);
-        
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + id));
-        
-        // Validate order can be paid
-        if ("COMPLETED".equals(order.getStatus())) {
-            throw new IllegalStateException("Order is already completed");
-        }
-        if ("CANCELLED".equals(order.getStatus())) {
-            throw new IllegalStateException("Cannot pay for cancelled order");
-        }
-        if ("PAID".equals(order.getPaymentStatus())) {
-            throw new IllegalStateException("Order is already paid");
-        }
-        
-        // Validate cash payment
-        if ("CASH".equals(paymentMethod) && cashReceived != null) {
-            if (cashReceived < order.getTotalAmount()) {
-                throw new IllegalArgumentException(
-                    "Cash received (" + cashReceived + ") is less than total amount (" + order.getTotalAmount() + ")"
-                );
-            }
-            double change = cashReceived - order.getTotalAmount();
-            log.info("Cash payment: Received {}, Change: {}", cashReceived, change);
-        }
-        
-        // Update payment
-        order.setPaymentMethod(paymentMethod != null ? paymentMethod : "CASH");
-        order.setPaymentStatus("PAID");
-        
-        // If order is still PENDING or PREPARING, mark as COMPLETED
-        if (!"COMPLETED".equals(order.getStatus())) {
-            order.setStatus("COMPLETED");
-            
-            // Free table if DINE_IN
-            if (order.getTable() != null) {
-                order.getTable().setStatus("AVAILABLE");
-                tableRepository.save(order.getTable());
-                
-                if (order.getTable().isMaster() && order.getTable().getSubTables() != null) {
-                    for (TableEntity subTable : order.getTable().getSubTables()) {
-                        subTable.setStatus("AVAILABLE");
-                        tableRepository.save(subTable);
-                    }
-                }
-                log.info("Table {} freed after payment", order.getTable().getTableNo());
-            }
-        }
-        
-        Order savedOrder = orderRepository.save(order);
-        log.info("Payment completed for order: {}", savedOrder.getInvoiceNo());
-        
-        return savedOrder;
-    }
+//    @Override
+//    @Transactional
+//    public Order processPayment(Long id, String paymentMethod, Double cashReceived) {
+//        log.info("Processing payment for order: {}", id);
+//        
+//        Order order = orderRepository.findById(id)
+//                .orElseThrow(() -> new OrderNotFoundException("Order not found with ID: " + id));
+//        
+//        // Validate order can be paid
+//        if ("COMPLETED".equals(order.getStatus())) {
+//            throw new IllegalStateException("Order is already completed");
+//        }
+//        if ("CANCELLED".equals(order.getStatus())) {
+//            throw new IllegalStateException("Cannot pay for cancelled order");
+//        }
+//        if ("PAID".equals(order.getPaymentStatus())) {
+//            throw new IllegalStateException("Order is already paid");
+//        }
+//        
+//        // Validate cash payment
+//        if ("CASH".equals(paymentMethod) && cashReceived != null) {
+//            if (cashReceived < order.getTotalAmount()) {
+//                throw new IllegalArgumentException(
+//                    "Cash received (" + cashReceived + ") is less than total amount (" + order.getTotalAmount() + ")"
+//                );
+//            }
+//            double change = cashReceived - order.getTotalAmount();
+//            log.info("Cash payment: Received {}, Change: {}", cashReceived, change);
+//        }
+//        
+//        // Update payment
+//        order.setPaymentMethod(paymentMethod != null ? paymentMethod : "CASH");
+//        order.setPaymentStatus("PAID");
+//        
+//        // If order is still PENDING or PREPARING, mark as COMPLETED
+//        if (!"COMPLETED".equals(order.getStatus())) {
+//            order.setStatus("COMPLETED");
+//            
+//            // Free table if DINE_IN
+//            if (order.getTable() != null) {
+//                order.getTable().setStatus("AVAILABLE");
+//                tableRepository.save(order.getTable());
+//                
+//                if (order.getTable().isMaster() && order.getTable().getSubTables() != null) {
+//                    for (TableEntity subTable : order.getTable().getSubTables()) {
+//                        subTable.setStatus("AVAILABLE");
+//                        tableRepository.save(subTable);
+//                    }
+//                }
+//                log.info("Table {} freed after payment", order.getTable().getTableNo());
+//            }
+//        }
+//        
+//        Order savedOrder = orderRepository.save(order);
+//        log.info("Payment completed for order: {}", savedOrder.getInvoiceNo());
+//        
+//        return savedOrder;
+//    }
 
 //      Get pending payment orders
 //    @Override
@@ -820,6 +815,85 @@ public class OrderServiceImpl implements OrderService {
 //        return revenue;
 //    }
 
+    
+ // ✅ Process payment and create Payment row in database
+ // service/OrderService.java
+
+    @Transactional
+    public Payment processPayment(Long orderId, String paymentMethod, Double cashReceived) {
+        log.info("Processing payment for order ID: {}", orderId);
+
+        // 1. Get order
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
+
+        // 2. Validate order status
+        if ("PAID".equals(order.getPaymentStatus())) {
+            throw new RuntimeException("Order is already paid");
+        }
+
+        if ("CANCELLED".equals(order.getStatus())) {
+            throw new RuntimeException("Cannot process payment for cancelled order");
+        }
+
+        // 3. Validate total amount
+        if (order.getTotalAmount() == null || order.getTotalAmount() <= 0) {
+            throw new RuntimeException("Invalid order total amount");
+        }
+
+        // 4. Validate payment method
+        if (paymentMethod == null || paymentMethod.isEmpty()) {
+            throw new RuntimeException("Payment method is required");
+        }
+
+        // 5. Create new Payment object
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        payment.setAmount(order.getTotalAmount());
+        payment.setMethod(paymentMethod.toUpperCase());
+        payment.setStatus("SUCCESS");
+        payment.setTransactionNo(generateTransactionNo());
+        payment.setPaymentDate(LocalDateTime.now());
+
+        // 6. Cash logic
+        if ("CASH".equalsIgnoreCase(paymentMethod)) {
+            if (cashReceived == null || cashReceived <= 0) {
+                throw new RuntimeException("Cash received is required for cash payment");
+            }
+            
+            if (cashReceived < order.getTotalAmount()) {
+                throw new RuntimeException("Cash received (" + cashReceived + 
+                        ") is less than total amount (" + order.getTotalAmount() + ")");
+            }
+            
+            payment.setCashReceived(cashReceived);
+            payment.setChangeAmount(cashReceived - order.getTotalAmount());
+            
+            log.info("Cash payment - Received: {}, Change: {}", cashReceived, payment.getChangeAmount());
+        } else {
+            payment.setCashReceived(0.0);
+            payment.setChangeAmount(0.0);
+        }
+
+        // 7. Update order status
+        order.setPaymentStatus("PAID");
+        order.setStatus("COMPLETED");
+        order.setPaymentMethod(paymentMethod.toUpperCase());
+
+        // 8. Save order and payment
+        orderRepository.save(order);
+        Payment savedPayment = paymentRepository.save(payment);
+
+        log.info("✅ Payment processed successfully - Order: {}, Payment: {}, Amount: {}", 
+                order.getInvoiceNo(), savedPayment.getTransactionNo(), savedPayment.getAmount());
+
+        return savedPayment;
+    }
+
+    private String generateTransactionNo() {
+        return "TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+    
     // ============================================================
     // PRIVATE HELPER METHODS
     // ============================================================

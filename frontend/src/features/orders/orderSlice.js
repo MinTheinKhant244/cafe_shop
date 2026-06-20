@@ -84,17 +84,21 @@ export const updateOrderStatus = createAsyncThunk(
 
 export const updatePaymentStatus = createAsyncThunk(
   "orders/updatePayment",
-  async ({ id, paymentStatus }, thunkAPI) => {
+  async ({ id, paymentMethod, paymentStatus }, thunkAPI) => {
     try {
+      const params = new URLSearchParams();
+      if (paymentMethod) params.append("paymentMethod", paymentMethod);
+      if (paymentStatus) params.append("paymentStatus", paymentStatus);
+      
       const response = await api.patch(
-        `/orders/payment/${id}`,
-        null,
-        { params: { paymentStatus } }
+        `/orders/cashier/payment/${id}?${params.toString()}`, 
+        null
       );
+      
       return response.data;
     } catch (error) {
       return thunkAPI.rejectWithValue(
-        error.response?.data?.message || "Failed to update payment"
+        error.response?.data?.message || "Payment processing failed"
       );
     }
   }

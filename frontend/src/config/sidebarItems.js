@@ -66,12 +66,6 @@ export const sidebarItems = [
     path: "/admin/staffs",
     icon: "fa-users",
     roles: ["ADMIN"]
-  },
-  {
-    title: "Reports",
-    path: "/admin/reports",
-    icon: "fa-chart-bar",
-    roles: ["ADMIN"]
   }
 
 ];

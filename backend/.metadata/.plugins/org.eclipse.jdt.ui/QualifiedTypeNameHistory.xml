@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
-    <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.RecipeRepository"/>
-    <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.InventoryRepository"/>
-    <fullyQualifiedTypeName name="org.springframework.data.jpa.repository.Lock"/>
     <fullyQualifiedTypeName name="jakarta.persistence.LockModeType"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.entity.CartItem"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.CartItemRepository"/>
@@ -49,7 +46,6 @@
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.ProductRepository"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.InventoryTransactionRepository"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.util.InvoiceGenerator"/>
-    <fullyQualifiedTypeName name="java.time.LocalDateTime"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.dto.OrderSummaryDTO"/>
     <fullyQualifiedTypeName name="java.time.LocalDate"/>
     <fullyQualifiedTypeName name="org.hibernate.mapping.Map"/>
@@ -60,4 +56,8 @@
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.entity.Order"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.entity.Inventory"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.TableRepository"/>
+    <fullyQualifiedTypeName name="java.time.LocalDateTime"/>
+    <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.PaymentRepository"/>
+    <fullyQualifiedTypeName name="com.hmi.cafe_shop.entity.Payment"/>
+    <fullyQualifiedTypeName name="org.springframework.web.bind.annotation.RequestParam"/>
 </qualifiedTypeNameHistroy>

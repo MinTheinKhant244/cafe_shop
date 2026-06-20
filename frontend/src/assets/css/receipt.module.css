@@ -1,0 +1,295 @@
+/* src/assets/css/receipt.module.css */
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.receiptModal {
+  background: white;
+  border-radius: 16px;
+  max-width: 420px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
+  border-radius: 16px 16px 0 0;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a2332;
+}
+
+.modalClose {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.3s;
+}
+
+.modalClose:hover {
+  color: #e74c3c;
+}
+
+.receiptContainer {
+  padding: 20px;
+  background: #fafafa;
+}
+
+.receipt {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  max-width: 350px;
+  margin: 0 auto;
+  font-family: 'Courier New', monospace;
+}
+
+.header {
+  text-align: center;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #ddd;
+  margin-bottom: 10px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a2332;
+}
+
+.header p {
+  margin: 2px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.divider {
+  border-top: 1px dashed #ddd;
+  margin: 8px 0;
+}
+
+.orderInfo {
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.infoLabel {
+  color: #666;
+  font-weight: 500;
+}
+
+.infoValue {
+  color: #1a2332;
+  font-weight: 600;
+}
+
+.itemsTable {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+
+.itemsTable th {
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  padding: 6px 0;
+  font-weight: 600;
+  color: #555;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.itemsTable td {
+  padding: 4px 0;
+  color: #333;
+}
+
+.textCenter {
+  text-align: center;
+}
+
+.textRight {
+  text-align: right;
+}
+
+.totalSection {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 3px 0;
+}
+
+.grandTotal {
+  font-size: 16px;
+  font-weight: 700;
+  padding-top: 8px;
+  border-top: 2px solid #1a2332;
+  margin-top: 4px;
+  color: #1a2332;
+}
+
+.paymentInfo {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #ddd;
+  font-size: 12px;
+}
+
+.statusPaid {
+  color: #27ae60;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #ddd;
+  font-size: 12px;
+  color: #666;
+}
+
+.footer p {
+  margin: 3px 0;
+}
+
+.smallText {
+  font-size: 9px;
+  color: #999;
+}
+
+.receiptActions {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  border-radius: 0 0 16px 16px;
+}
+
+.printBtn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  flex: 1;
+  background: #2ecc71;
+  color: white;
+}
+
+.printBtn:hover {
+  background: #27ae60;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+}
+
+.closeBtn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  flex: 1;
+  background: #e9ecef;
+  color: #555;
+}
+
+.closeBtn:hover {
+  background: #dee2e6;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .receiptModal {
+    max-width: 98%;
+    max-height: 95vh;
+  }
+
+  .receipt {
+    padding: 16px;
+  }
+
+  .receiptActions {
+    flex-direction: column;
+  }
+
+  .printBtn,
+  .closeBtn {
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .modalHeader h3 {
+    font-size: 14px;
+  }
+
+  .grandTotal {
+    font-size: 14px;
+  }
+}

@@ -9,6 +9,7 @@ import api from "../../app/api";
 import Sidebar from "../../components/Sidebar";
 import ProductCard from "./ProductCard";
 import Cart from "../carts/Cart";
+import ReceiptPrinter from "../../features/orders/ReceiptPrinter";
 import styles from "../../assets/css/posSales.module.css";
 
 function PosSales() { 
@@ -33,12 +34,12 @@ function PosSales() {
   const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
   const [pendingOrders, setPendingOrders] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // ✅ Add order source state
   const [orderSource, setOrderSource] = useState("DINE_IN");
-  
-  // Cart sidebar visibility state (default: open on desktop)
   const [isCartOpen, setIsCartOpen] = useState(true);
+  
+  // Receipt states
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [currentReceiptOrder, setCurrentReceiptOrder] = useState(null);
 
   // Initial data loading
   useEffect(() => {
@@ -73,7 +74,7 @@ function PosSales() {
     }
   };
 
-  // Refresh handler - re-fetches all data to get latest stock status
+  // Refresh handler
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -109,6 +110,12 @@ function PosSales() {
     }
   };
 
+  // Handle Print Receipt
+  const handlePrintReceipt = (order) => {
+    setCurrentReceiptOrder(order);
+    setShowReceipt(true);
+  };
+
   // ========== FIXED: Place Order with correct JSON structure ==========
   const handlePlaceOrder = async () => {
     console.log("=== ORDER DEBUG ===");
@@ -121,7 +128,6 @@ function PosSales() {
       return;
     }
     
-    // ✅ Table is only required for DINE_IN
     if (orderSource === "DINE_IN" && !selectedTableId) {
       alert("Please select a table for DINE_IN orders");
       return;
@@ -130,13 +136,12 @@ function PosSales() {
     setLoading(true);
     
     try {
-      // ✅ Build order data based on order source
       const orderData = {
         createdBy: user?.id || 1,
-        tableId: orderSource === "DINE_IN" ? selectedTableId : null, // ✅ null for TAKEAWAY/DELIVERY
+        tableId: orderSource === "DINE_IN" ? selectedTableId : null,
         totalAmount: totalAmount,
         paymentStatus: "PENDING",
-        orderSource: orderSource, // ✅ DINE_IN, TAKEAWAY, DELIVERY
+        orderSource: orderSource,
         status: "PENDING",
         orderItems: items.map(item => ({
           productId: item.id,
@@ -157,7 +162,7 @@ function PosSales() {
       setSelectedTableId(null);
       setIsMobileCartOpen(false);
       await dispatch(fetchAllOrders());
-      await fetchTables(); // Refresh tables to update availability
+      await fetchTables();
       
     } catch (error) {
       console.error("Order error:", error);
@@ -167,6 +172,7 @@ function PosSales() {
     }
   };
 
+  // Handle Payment for Order
   const handlePaymentForOrder = (order) => {
     setSelectedOrderForPayment(order);
     setPaymentMethod("CASH");
@@ -174,6 +180,7 @@ function PosSales() {
     setShowPaymentModal(true);
   };
 
+  // Handle Confirm Payment
   const handleConfirmPayment = async () => {
     if (!selectedOrderForPayment) return;
 
@@ -182,15 +189,20 @@ function PosSales() {
     try {
       await dispatch(updatePaymentStatus({ 
         id: selectedOrderForPayment.id, 
+        paymentMethod: paymentMethod, 
         paymentStatus: "PAID" 
       })).unwrap();
       
       setShowPaymentModal(false);
+      
+      // ✅ Show receipt after payment
+      handlePrintReceipt(selectedOrderForPayment);
+      
       setSelectedOrderForPayment(null);
       setCashReceived("");
       await dispatch(fetchAllOrders());
-      await fetchTables(); // Refresh tables after payment
-      alert(`Payment for ${selectedOrderForPayment.invoiceNo} completed successfully!`);
+      await fetchTables();
+      
     } catch (error) {
       alert("Payment failed: " + (error?.message || "Unknown error"));
     } finally {
@@ -239,13 +251,12 @@ function PosSales() {
               {isRefreshing ? "⏳" : "🔄"} Refresh
             </button>
             
-            {/* ✅ Order Source Selection */}
+            {/* Order Source Selection */}
             <select 
               className={styles.orderSourceSelect}
               value={orderSource}
               onChange={(e) => {
                 setOrderSource(e.target.value);
-                // ✅ Reset table selection when switching to TAKEAWAY/DELIVERY
                 if (e.target.value !== "DINE_IN") {
                   setSelectedTableId(null);
                 }
@@ -256,7 +267,7 @@ function PosSales() {
               <option value="DELIVERY">🚚 Delivery</option>
             </select>
             
-            {/* ✅ Table Selection - Show ONLY for DINE_IN */}
+            {/* Table Selection - Show ONLY for DINE_IN */}
             {orderSource === "DINE_IN" && (
               <select 
                 className={styles.tableSelect}
@@ -277,7 +288,7 @@ function PosSales() {
               </select>
             )}
             
-            {/* ✅ Show order type badge for TAKEAWAY/DELIVERY */}
+            {/* Show order type badge for TAKEAWAY/DELIVERY */}
             {orderSource !== "DINE_IN" && (
               <span className={styles.orderTypeBadge}>
                 {orderSource === "TAKEAWAY" ? "📦 Takeaway" : "🚚 Delivery"}
@@ -388,7 +399,7 @@ function PosSales() {
             cartId={null}
             userId={user?.id || 1}
             selectedTableId={selectedTableId}
-            orderSource={orderSource} // ✅ Pass order source to Cart
+            orderSource={orderSource}
             onOrderSuccess={(order) => {
               setOrderSuccess(order);
               setIsMobileCartOpen(false);
@@ -436,13 +447,13 @@ function PosSales() {
               <div className={styles.paymentMethodGroup}>
                 <label>Payment Method</label>
                 <div className={styles.methodButtons}>
-                  {["CASH", "KPAY", "WAVE", "CARD"].map(method => (
+                  {["CASH", "KPAY", "WAVEPAY", "CARD"].map(method => (
                     <button 
                       key={method} 
                       className={`${styles.methodBtn} ${paymentMethod === method ? styles.active : ""}`} 
                       onClick={() => setPaymentMethod(method)}
                     >
-                      {method === "CASH" ? "💵 Cash" : method === "KPAY" ? "🏦 KBZ Pay" : method === "WAVE" ? "📱 Wave Pay" : "💳 Card"}
+                      {method === "CASH" ? "💵 Cash" : method === "KPAY" ? "🏦 KBZ Pay" : method === "WAVEPAY" ? "📱 Wave Pay" : "💳 Card"}
                     </button>
                   ))}
                 </div>
@@ -476,7 +487,7 @@ function PosSales() {
         </div>
       )}
 
-      {/* Order Success Modal */}
+      {/* Order Success Modal - Print Order button removed */}
       {orderSuccess && (
         <div className={styles.modalOverlay} onClick={() => setOrderSuccess(null)}>
           <div className={styles.successModal} onClick={(e) => e.stopPropagation()}>
@@ -490,10 +501,23 @@ function PosSales() {
             </p>
             <p>Total: {orderSuccess.totalAmount?.toLocaleString()} Ks</p>
             <p className={styles.paymentNote}>⚠️ Payment will be collected after dining</p>
-            <button className={styles.printBtn} onClick={() => window.print()}>🖨️ Print Order</button>
             <button className={styles.closeSuccessBtn} onClick={() => setOrderSuccess(null)}>Close</button>
           </div>
         </div>
+      )}
+
+      {/* Receipt Printer Modal - Show after payment only */}
+      {showReceipt && currentReceiptOrder && (
+        <ReceiptPrinter
+          order={currentReceiptOrder}
+          onClose={() => {
+            setShowReceipt(false);
+            setCurrentReceiptOrder(null);
+          }}
+          onPrint={() => {
+            console.log('Receipt printed successfully');
+          }}
+        />
       )}
     </div>
   );

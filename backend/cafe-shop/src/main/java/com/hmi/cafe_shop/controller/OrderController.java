@@ -82,8 +82,9 @@ public class OrderController {
     @PatchMapping("/payment/{id}")
     public ResponseEntity<Order> updatePayment(
             @PathVariable Long id,
+            @RequestParam String paymentMethod,
             @RequestParam String paymentStatus) {
-        return ResponseEntity.ok(orderService.updatePayment(id, paymentStatus));
+        return ResponseEntity.ok(orderService.updatePayment(id, paymentMethod, paymentStatus));
     }
 
     // ========== CASHIER APIS (4 New Endpoints) ==========
@@ -129,8 +130,9 @@ public class OrderController {
     @PatchMapping("/cashier/payment/{id}")
     public ResponseEntity<Order> updateCashierPayment(
             @PathVariable Long id,
+            @RequestParam String paymentMethod,
             @RequestParam String paymentStatus) {
-        return ResponseEntity.ok(orderService.updatePayment(id, paymentStatus));
+        return ResponseEntity.ok(orderService.updatePayment(id,paymentMethod, paymentStatus));
     }
 
     @PostMapping("/cashier/payment/process/{id}")

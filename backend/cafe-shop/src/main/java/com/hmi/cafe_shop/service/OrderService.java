@@ -4,6 +4,7 @@ import com.hmi.cafe_shop.dto.OrderRequestDTO;
 import com.hmi.cafe_shop.dto.StockCheckRequest;
 import com.hmi.cafe_shop.dto.StockCheckResponse;
 import com.hmi.cafe_shop.entity.Order;
+import com.hmi.cafe_shop.entity.Payment;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -26,7 +27,7 @@ public interface OrderService {
     Order updateStatus(Long id, String status);
     void deductStockForOrder(Order order);
 
-    Order updatePayment(Long id, String paymentStatus);
+    Order updatePayment(Long id, String paymentMethod, String paymentStatus);
     
     
  // ========== 🆕 CASHIER API METHODS (4 New) ==========
@@ -46,7 +47,7 @@ public interface OrderService {
     Order cancelOrder(Long id);
     
  // ===== 🆕 PAYMENT METHODS =====
-    Order processPayment(Long id, String paymentMethod, Double cashReceived);
+    Payment processPayment(Long id, String paymentMethod, Double cashReceived);
     
 //    List<Order> getPendingPaymentOrders(String orderSource);
     
