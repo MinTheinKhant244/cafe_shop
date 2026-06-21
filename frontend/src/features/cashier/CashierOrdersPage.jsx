@@ -1,6 +1,7 @@
 // src/pages/cashier/CashierOrdersPage.jsx
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   fetchCashierOrders,
   updateOrderStatus,
@@ -17,6 +18,7 @@ import styles from "../../assets/css/cashierOrder.module.css";
 
 function CashierOrdersPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   
   const isExpanded = useSelector((state) => state.ui?.isSidebarExpanded);
   
@@ -44,20 +46,18 @@ function CashierOrdersPage() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [currentReceiptOrder, setCurrentReceiptOrder] = useState(null);
 
-  // ✅ Auto-filter when localFilters change
+  // ============================================
+  // AUTO-FILTER WHEN FILTERS CHANGE
+  // ============================================
   useEffect(() => {
     console.log("Auto-applying filters:", localFilters);
     dispatch(setFilters(localFilters));
     dispatch(fetchCashierOrders(localFilters));
   }, [localFilters, dispatch]);
 
-  useEffect(() => {
-    console.log("Current filters:", filters);
-    console.log("Orders count:", orders?.length);
-    console.log("Order sources:", orders?.map(o => o.orderSource));
-  }, [orders, filters]);
-
-  // ✅ Notification timer
+  // ============================================
+  // NOTIFICATION TIMER
+  // ============================================
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), 3000);
@@ -65,16 +65,25 @@ function CashierOrdersPage() {
     }
   }, [notification]);
 
+  // ============================================
+  // SHOW NOTIFICATION
+  // ============================================
   const showNotification = (message, type = "success") => {
     setNotification({ message, type });
   };
 
+  // ============================================
+  // HANDLE FILTER CHANGE
+  // ============================================
   const handleFilterChange = (key, value) => {
     console.log(`Filter changed: ${key} = ${value}`);
     const newFilters = { ...localFilters, [key]: value };
     setLocalFilters(newFilters);
   };
 
+  // ============================================
+  // HANDLE RESET FILTERS
+  // ============================================
   const handleResetFilters = () => {
     const defaultFilters = {
       status: "ALL",
@@ -87,13 +96,20 @@ function CashierOrdersPage() {
     dispatch(fetchCashierOrders(defaultFilters));
   };
 
+  // ============================================
+  // HANDLE KEY PRESS (Search)
+  // ============================================
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       console.log("Search triggered with:", localFilters.search);
     }
   };
 
-  const handleStatusUpdate = async (orderId, status) => {
+  // ============================================
+  // HANDLE STATUS UPDATE
+  // ============================================
+  const handleStatusUpdate = async (orderId, status, e) => {
+    e.stopPropagation(); // Prevent card click
     try {
       await dispatch(updateOrderStatus({ id: orderId, status })).unwrap();
       showNotification(`Order status updated to ${status}`, "success");
@@ -103,17 +119,19 @@ function CashierOrdersPage() {
     }
   };
 
-  // ============================================================
-  // ===== PAYMENT FUNCTIONS =====
-  // ============================================================
-
-  // ✅ Handle Print Receipt
+  // ============================================
+  // HANDLE PRINT RECEIPT
+  // ============================================
   const handlePrintReceipt = (order) => {
     setCurrentReceiptOrder(order);
     setShowReceipt(true);
   };
 
-  const handlePaymentForOrder = (order) => {
+  // ============================================
+  // HANDLE PAYMENT FOR ORDER
+  // ============================================
+  const handlePaymentForOrder = (order, e) => {
+    e.stopPropagation(); // Prevent card click
     setSelectedOrder(order);
     setPaymentMethod("CASH");
     setCashReceived("");
@@ -121,6 +139,9 @@ function CashierOrdersPage() {
     setShowPaymentModal(true);
   };
 
+  // ============================================
+  // HANDLE CONFIRM PAYMENT
+  // ============================================
   const handleConfirmPayment = async () => {
     if (!selectedOrder) return;
 
@@ -144,7 +165,7 @@ function CashierOrdersPage() {
       
       setShowPaymentModal(false);
       
-      // ✅ Show receipt after successful payment
+      // Show receipt after successful payment
       handlePrintReceipt(selectedOrder);
       
       setSelectedOrder(null);
@@ -161,7 +182,11 @@ function CashierOrdersPage() {
     }
   };
 
-  const handleCancelOrder = async (orderId) => {
+  // ============================================
+  // HANDLE CANCEL ORDER
+  // ============================================
+  const handleCancelOrder = async (orderId, e) => {
+    e.stopPropagation(); // Prevent card click
     if (!window.confirm("Are you sure you want to cancel this order?")) return;
     
     try {
@@ -173,6 +198,16 @@ function CashierOrdersPage() {
     }
   };
 
+  // ============================================
+  // HANDLE CARD CLICK - Navigate to Detail
+  // ============================================
+  const handleCardClick = (orderId) => {
+    navigate(`/cashier/orders/${orderId}`);
+  };
+
+  // ============================================
+  // GET STATUS COLOR
+  // ============================================
   const getStatusColor = (status) => {
     const colors = {
       PENDING: "#ff9800",
@@ -183,6 +218,9 @@ function CashierOrdersPage() {
     return colors[status] || "#9e9e9e";
   };
 
+  // ============================================
+  // GET SOURCE ICON
+  // ============================================
   const getSourceIcon = (source) => {
     if (!source) return "📋";
     const icons = {
@@ -193,22 +231,33 @@ function CashierOrdersPage() {
     return icons[source] || "📋";
   };
 
+  // ============================================
+  // GET SOURCE DISPLAY
+  // ============================================
   const getSourceDisplay = (source) => {
     if (!source) return "Unknown";
     return source;
   };
 
+  // ============================================
+  // CHECK IF CAN UPDATE STATUS
+  // ============================================
   const canUpdateStatus = (status) => {
     return !["COMPLETED", "CANCELLED"].includes(status);
   };
 
+  // ============================================
+  // CHECK IF CAN PAY
+  // ============================================
   const canPay = (order) => {
     if (!order) return false;
     return order.paymentStatus === "PENDING" && 
            order.status !== "CANCELLED";
   };
 
-  // ✅ Stats from summary (auto-calculated from filtered orders)
+  // ============================================
+  // STATS FROM SUMMARY
+  // ============================================
   const stats = [
     { 
       label: "Pending", 
@@ -243,18 +292,22 @@ function CashierOrdersPage() {
     }
   ];
 
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <div className={`${styles.layout} ${isExpanded ? styles.sidebarExpanded : ""}`}>
       <Sidebar />
       
       <div className={styles.mainContent}>
-        {/* Notification Toast */}
+        {/* ===== NOTIFICATION TOAST ===== */}
         {notification && (
           <div className={`${styles.toast} ${styles[notification.type]}`}>
             {notification.type === "success" ? "✅" : "❌"} {notification.message}
           </div>
         )}
 
+        {/* ===== ERROR TOAST ===== */}
         {error && (
           <div className={`${styles.toast} ${styles.error}`}>
             ❌ {error}
@@ -262,7 +315,7 @@ function CashierOrdersPage() {
           </div>
         )}
 
-        {/* Page Header */}
+        {/* ===== PAGE HEADER ===== */}
         <div className={styles.pageHeader}>
           <div className={styles.headerLeft}>
             <button 
@@ -288,7 +341,7 @@ function CashierOrdersPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* ===== STATS CARDS ===== */}
         <div className={styles.statsGrid}>
           {stats.map((stat, index) => (
             <div 
@@ -307,7 +360,7 @@ function CashierOrdersPage() {
           ))}
         </div>
 
-        {/* Filters */}
+        {/* ===== FILTERS ===== */}
         <div className={styles.filtersContainer}>
           <div className={styles.filterGroup}>
             <label>Status:</label>
@@ -371,11 +424,13 @@ function CashierOrdersPage() {
           </div>
         </div>
 
+        {/* ===== ORDER COUNT ===== */}
         <div className={styles.orderCount}>
           <span>{orders?.length || 0} orders found</span>
           {loading && <span className={styles.loadingSpinner}>⏳ Loading...</span>}
         </div>
 
+        {/* ===== ORDER LIST ===== */}
         {loading ? (
           <div className={styles.loadingContainer}>
             <div className={styles.spinner}></div>
@@ -393,7 +448,10 @@ function CashierOrdersPage() {
               <div 
                 key={order.id} 
                 className={`${styles.orderCard} ${order.status === "CANCELLED" ? styles.cancelled : ""}`}
+                onClick={() => handleCardClick(order.id)}
+                style={{ cursor: "pointer" }}
               >
+                {/* ===== ORDER HEADER ===== */}
                 <div className={styles.orderHeader}>
                   <div className={styles.orderInfo}>
                     <span className={styles.invoiceNo}>#{order.invoiceNo}</span>
@@ -402,7 +460,7 @@ function CashierOrdersPage() {
                     </span>
                     {order.orderSource === "DINE_IN" && order.table && (
                       <span className={styles.tableInfo}>
-                        Table {order.table.tableNo}
+                        🪑 Table {order.table.tableNo}
                       </span>
                     )}
                     {order.orderSource === "TAKEAWAY" && (
@@ -431,10 +489,11 @@ function CashierOrdersPage() {
                   </div>
                 </div>
 
+                {/* ===== ORDER ITEMS ===== */}
                 <div className={styles.orderItems}>
                   {order.orderItems?.slice(0, 4).map((item, index) => (
                     <span key={index} className={styles.orderItem}>
-                      {item.product?.name} × {item.quantity}
+                      {item.product?.name || "Unknown"} × {item.quantity}
                     </span>
                   ))}
                   {order.orderItems?.length > 4 && (
@@ -444,6 +503,7 @@ function CashierOrdersPage() {
                   )}
                 </div>
 
+                {/* ===== ORDER FOOTER ===== */}
                 <div className={styles.orderFooter}>
                   <div className={styles.orderTotal}>
                     <span>Total:</span>
@@ -459,41 +519,34 @@ function CashierOrdersPage() {
                   )}
 
                   <div className={styles.orderActions}>
+                    {/* ===== PAYMENT BUTTON ===== */}
                     {canPay(order) && (
                       <button 
                         className={styles.paymentBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePaymentForOrder(order);
-                        }}
+                        onClick={(e) => handlePaymentForOrder(order, e)}
                         disabled={actionLoading}
                       >
                         💳 Pay Now
                       </button>
                     )}
 
+                    {/* ===== STATUS UPDATE BUTTONS ===== */}
                     {canUpdateStatus(order.status) ? (
                       <>
                         {order.status === "PENDING" && (
                           <button 
                             className={styles.actionBtn}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusUpdate(order.id, "PREPARING");
-                            }}
+                            onClick={(e) => handleStatusUpdate(order.id, "PREPARING", e)}
                             disabled={actionLoading}
                           >
-                            ▶️ Start Preparing
+                            ▶️ Start
                           </button>
                         )}
                         
                         {order.status === "PREPARING" && (
                           <button 
                             className={styles.actionBtn}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusUpdate(order.id, "COMPLETED");
-                            }}
+                            onClick={(e) => handleStatusUpdate(order.id, "COMPLETED", e)}
                             disabled={actionLoading}
                           >
                             ✅ Complete
@@ -506,23 +559,38 @@ function CashierOrdersPage() {
                       )
                     )}
 
+                    {/* ===== CANCEL BUTTON ===== */}
                     {order.status === "PENDING" && (
                       <button 
                         className={styles.cancelBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCancelOrder(order.id);
-                        }}
+                        onClick={(e) => handleCancelOrder(order.id, e)}
                         disabled={actionLoading}
                       >
                         ❌ Cancel
                       </button>
                     )}
                     
+                    {/* ===== CANCELLED BADGE ===== */}
                     {order.status === "CANCELLED" && (
                       <span className={styles.cancelledBadge}>❌ Cancelled</span>
                     )}
+
+                    {/* ===== VIEW DETAILS BUTTON ===== */}
+                    <button 
+                      className={styles.viewBtn}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCardClick(order.id);
+                      }}
+                    >
+                      👁️ View
+                    </button>
                   </div>
+                </div>
+
+                {/* ===== CLICK HINT ===== */}
+                <div className={styles.clickHint}>
+                  Click card to view details
                 </div>
               </div>
             ))}

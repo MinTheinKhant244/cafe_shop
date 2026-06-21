@@ -161,6 +161,7 @@ export const fetchOrderById = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const response = await api.get(`/orders/${id}`);
+      console.log("📦 Order detail response:", response.data);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -234,28 +235,28 @@ export const cancelOrder = createAsyncThunk(
 // ============================================
 // PROCESS FULL PAYMENT
 // ============================================
-export const processPayment = createAsyncThunk(
-  "cashierOrders/processPayment",
-  async ({ id, paymentMethod, cashReceived }, { rejectWithValue }) => {
-    try {
-      const params = new URLSearchParams();
-      if (paymentMethod) params.append("paymentMethod", paymentMethod);
-      if (cashReceived) params.append("cashReceived", cashReceived);
+// export const processPayment = createAsyncThunk(
+//   "cashierOrders/processPayment",
+//   async ({ id, paymentMethod, cashReceived }, { rejectWithValue }) => {
+//     try {
+//       const params = new URLSearchParams();
+//       if (paymentMethod) params.append("paymentMethod", paymentMethod);
+//       if (cashReceived) params.append("cashReceived", cashReceived);
       
-      const queryString = params.toString();
-      const url = queryString 
-        ? `/orders/cashier/payment/process/${id}?${queryString}`
-        : `/orders/cashier/payment/process/${id}`;
+//       const queryString = params.toString();
+//       const url = queryString 
+//         ? `/orders/cashier/payment/process/${id}?${queryString}`
+//         : `/orders/cashier/payment/process/${id}`;
       
-      const response = await api.post(url);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || "Payment processing failed"
-      );
-    }
-  }
-);
+//       const response = await api.post(url);
+//       return response.data;
+//     } catch (error) {
+//       return rejectWithValue(
+//         error.response?.data?.message || "Payment processing failed"
+//       );
+//     }
+//   }
+// );
 
 // ============================================
 // FETCH PENDING PAYMENT ORDERS
@@ -273,6 +274,26 @@ export const fetchPendingPayments = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch pending payments"
+      );
+    }
+  }
+);
+
+// ============================================
+// ADD ITEM TO ORDER
+// ============================================
+export const addItemToOrder = createAsyncThunk(
+  "cashierOrders/addItem",
+  async ({ orderId, productId, quantity }, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/orders/${orderId}/items`, {
+        productId,
+        quantity: quantity 
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to add item to order"
       );
     }
   }
@@ -443,29 +464,29 @@ const cashierOrderSlice = createSlice({
       })
       
       // ===== PROCESS PAYMENT =====
-      .addCase(processPayment.pending, (state) => {
-        state.actionLoading = true;
-        state.error = null;
-      })
-      .addCase(processPayment.fulfilled, (state, action) => {
-        state.actionLoading = false;
-        const updatedOrder = action.payload;
-        if (updatedOrder) {
-          const index = state.orders.findIndex(o => o.id === updatedOrder.id);
-          if (index !== -1) {
-            state.orders[index] = updatedOrder;
-          }
-          if (state.selectedOrder?.id === updatedOrder.id) {
-            state.selectedOrder = updatedOrder;
-          }
-          // ✅ Recalculate summary
-          state.summary = calculateSummaryFromOrders(state.orders);
-        }
-      })
-      .addCase(processPayment.rejected, (state, action) => {
-        state.actionLoading = false;
-        state.error = action.payload;
-      })
+      // .addCase(processPayment.pending, (state) => {
+      //   state.actionLoading = true;
+      //   state.error = null;
+      // })
+      // .addCase(processPayment.fulfilled, (state, action) => {
+      //   state.actionLoading = false;
+      //   const updatedOrder = action.payload;
+      //   if (updatedOrder) {
+      //     const index = state.orders.findIndex(o => o.id === updatedOrder.id);
+      //     if (index !== -1) {
+      //       state.orders[index] = updatedOrder;
+      //     }
+      //     if (state.selectedOrder?.id === updatedOrder.id) {
+      //       state.selectedOrder = updatedOrder;
+      //     }
+      //     // ✅ Recalculate summary
+      //     state.summary = calculateSummaryFromOrders(state.orders);
+      //   }
+      // })
+      // .addCase(processPayment.rejected, (state, action) => {
+      //   state.actionLoading = false;
+      //   state.error = action.payload;
+      // })
       
       // ===== FETCH PENDING PAYMENTS =====
       .addCase(fetchPendingPayments.pending, (state) => {
@@ -480,6 +501,18 @@ const cashierOrderSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.pendingPayments = [];
+      })
+
+      .addCase(addItemToOrder.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(addItemToOrder.fulfilled, (state, action) => {
+        state.actionLoading = false;
+      })
+      .addCase(addItemToOrder.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
       });
   }
 });

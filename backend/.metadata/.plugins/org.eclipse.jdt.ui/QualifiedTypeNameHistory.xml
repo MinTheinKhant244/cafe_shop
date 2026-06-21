@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
-    <fullyQualifiedTypeName name="jakarta.persistence.LockModeType"/>
-    <fullyQualifiedTypeName name="com.hmi.cafe_shop.entity.CartItem"/>
-    <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.CartItemRepository"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.dto.ProductStockStatusDTO"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.entity.Product"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.OrderRepository"/>
@@ -60,4 +57,7 @@
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.PaymentRepository"/>
     <fullyQualifiedTypeName name="com.hmi.cafe_shop.entity.Payment"/>
     <fullyQualifiedTypeName name="org.springframework.web.bind.annotation.RequestParam"/>
+    <fullyQualifiedTypeName name="com.hmi.cafe_shop.entity.OrderItem"/>
+    <fullyQualifiedTypeName name="com.hmi.cafe_shop.repository.OrderItemRepository"/>
+    <fullyQualifiedTypeName name="com.hmi.cafe_shop.dto.AddItemRequest"/>
 </qualifiedTypeNameHistroy>

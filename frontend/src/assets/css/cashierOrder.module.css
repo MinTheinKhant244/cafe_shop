@@ -1554,7 +1554,7 @@
     min-width: 40px;
   }
 }
-
+ 
 /* ===== FILTERS ===== */
 .filtersContainer {
   display: flex;
@@ -1681,4 +1681,121 @@
     justify-content: flex-end;
     margin-top: 4px;
   }
+}
+
+/* ===== VIEW DETAILS BUTTON ===== */
+.viewBtn {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #6c757d;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 60px;
+  justify-content: center;
+}
+
+.viewBtn:hover:not(:disabled) {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.viewBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ===== CLICK HINT ===== */
+.clickHint {
+  font-size: 10px;
+  color: #999;
+  text-align: right;
+  margin-top: 6px;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* ===== ORDER CARD HOVER EFFECT ===== */
+.orderCard {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.orderCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-color: #1976d2;
+}
+
+.orderCard:hover .clickHint {
+  opacity: 1;
+  color: #1976d2;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .viewBtn {
+    padding: 4px 10px;
+    font-size: 11px;
+    min-width: 50px;
+  }
+  
+  .clickHint {
+    font-size: 9px;
+    text-align: center;
+  }
+  
+  .orderCard:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 480px) {
+  .viewBtn {
+    padding: 3px 8px;
+    font-size: 10px;
+    min-width: 40px;
+  }
+  
+  .clickHint {
+    font-size: 8px;
+    margin-top: 4px;
+  }
+}
+
+/* ===== ORDER COUNT BADGE ===== */
+.orderCount {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 4px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #666;
+}
+
+.orderCount span:first-child {
+  background: #f0f2f5;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.loadingSpinner {
+  color: #1976d2;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }

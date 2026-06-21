@@ -13,6 +13,7 @@ import Inventory from "./features/inventory/Inventory.jsx"
 import Recipe from "./features/recipes/Recipe.jsx"
 import InventoryTransaction from "./features/inventory/InventoryTransaction.jsx"
 import CashierOrdersPage from "./features/cashier/CashierOrdersPage.jsx"
+import CashierOrderDetail from "./features/cashier/CashierOrderDetail.jsx"
 
 function App() {
   return (
@@ -119,7 +120,7 @@ function App() {
           </ProtectedRoute>
         } />
         
-      
+      <Route path="/cashier/orders/:id" element={<CashierOrderDetail />} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

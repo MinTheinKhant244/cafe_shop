@@ -1,6 +1,7 @@
 package com.hmi.cafe_shop.repository;
 
 import com.hmi.cafe_shop.entity.Order;
+import com.hmi.cafe_shop.entity.OrderItem;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,7 +23,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByStatus(String status);
 
     long countByStatus(String status);
-
+    
     
     // DASHBOARD - TODAY SALES
     @Query("""
@@ -85,6 +86,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Param("endDate") LocalDateTime endDate,
         @Param("search") String search
     );
+    
+    
+    
 
 //     2. Get today's order summary for dashboard
 //    @Query("""

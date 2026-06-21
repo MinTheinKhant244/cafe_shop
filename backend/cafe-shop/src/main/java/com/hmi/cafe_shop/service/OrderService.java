@@ -1,5 +1,6 @@
 package com.hmi.cafe_shop.service;
 
+import com.hmi.cafe_shop.dto.AddItemRequest;
 import com.hmi.cafe_shop.dto.OrderRequestDTO;
 import com.hmi.cafe_shop.dto.StockCheckRequest;
 import com.hmi.cafe_shop.dto.StockCheckResponse;
@@ -45,6 +46,8 @@ public interface OrderService {
 
 //    4. Cancel order (restore stock, free table)
     Order cancelOrder(Long id);
+    
+    Order addItemToOrder(Long orderId, AddItemRequest request);
     
  // ===== 🆕 PAYMENT METHODS =====
     Payment processPayment(Long id, String paymentMethod, Double cashReceived);

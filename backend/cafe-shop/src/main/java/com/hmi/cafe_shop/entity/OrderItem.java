@@ -28,4 +28,15 @@ public class OrderItem {
 
     private Integer quantity;
     private Double price;
+    
+    @Column(name = "total_price")
+    private Double totalPrice;
+
+    @PrePersist
+    @PreUpdate
+    private void calculateTotalPrice() {
+        if (price != null && quantity != null) {
+            this.totalPrice = price * quantity;
+        }
+    }
 }

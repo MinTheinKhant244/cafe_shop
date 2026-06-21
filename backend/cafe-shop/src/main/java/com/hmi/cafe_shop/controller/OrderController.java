@@ -1,5 +1,6 @@
 package com.hmi.cafe_shop.controller;
 
+import com.hmi.cafe_shop.dto.AddItemRequest;
 import com.hmi.cafe_shop.dto.OrderRequestDTO;
 import com.hmi.cafe_shop.dto.StockCheckRequest;
 import com.hmi.cafe_shop.dto.StockCheckResponse;
@@ -160,6 +161,24 @@ public class OrderController {
         }
         
         return ResponseEntity.ok(orderService.processPayment(id, paymentMethod, cashReceived));
+    }
+    
+    /**
+     * Add item to existing order
+     * POST /api/orders/{orderId}/items
+     */
+    @PostMapping("/{orderId}/items")
+    public ResponseEntity<?> addItemToOrder(
+            @PathVariable Long orderId,
+            @RequestBody AddItemRequest request) {
+        try {
+            Order updatedOrder = orderService.addItemToOrder(orderId, request);
+            return ResponseEntity.ok(updatedOrder);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
     }
 
 //    15. CASHIER - Get pending payment orders

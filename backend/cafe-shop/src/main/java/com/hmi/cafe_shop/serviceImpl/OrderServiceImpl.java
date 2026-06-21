@@ -1,5 +1,6 @@
 package com.hmi.cafe_shop.serviceImpl;
 
+import com.hmi.cafe_shop.dto.AddItemRequest;
 import com.hmi.cafe_shop.dto.OrderRequestDTO;
 import com.hmi.cafe_shop.dto.StockCheckRequest;
 import com.hmi.cafe_shop.dto.StockCheckResponse;
@@ -29,6 +30,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
+	private final OrderItemRepository orderItemRepository;
 	private final PaymentRepository paymentRepository;
 	private final TableRepository tableRepository;
 	private final ProductRepository productRepository;
@@ -973,4 +975,173 @@ public class OrderServiceImpl implements OrderService {
         
         log.info("Stock restoration completed for cancelled order ID: {}", order.getId());
     }
+    
+	 // ============================================
+	 // ADD ITEM TO ORDER - WITH STOCK DEDUCT (Using Recipe/Inventory)
+	 // ============================================
+	 @Override
+	 @Transactional
+	 public Order addItemToOrder(Long orderId, AddItemRequest request) {
+	     log.info("🔄 Adding item to order: {}, Product: {}, Quantity: {}", 
+	         orderId, request.getProductId(), request.getQuantity());
+	
+	     // 1. Validate request
+	     if (request.getProductId() == null) {
+	         throw new IllegalArgumentException("Product ID is required");
+	     }
+	     if (request.getQuantity() == null || request.getQuantity() < 1) {
+	         throw new IllegalArgumentException("Quantity must be at least 1");
+	     }
+	
+	     // 2. Find order
+	     Order order = orderRepository.findById(orderId)
+	             .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
+	
+	     // 3. Check if order can be modified
+	     if ("COMPLETED".equals(order.getStatus())) {
+	         throw new IllegalArgumentException("Cannot add items to COMPLETED order");
+	     }
+	     if ("CANCELLED".equals(order.getStatus())) {
+	         throw new IllegalArgumentException("Cannot add items to CANCELLED order");
+	     }
+	
+	     // 4. Find product
+	     Product product = productRepository.findById(request.getProductId())
+	             .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + request.getProductId()));
+	
+	     if (!product.getIsActive()) {
+	         throw new IllegalArgumentException("Product is not active");
+	     }
+	
+	     // 5. ✅ STOCK CHECK - Check inventory/recipe before adding
+	     List<Recipe> recipes = recipeRepository.findByProductId(product.getId());
+	     if (recipes.isEmpty()) {
+	         log.warn("⚠️ Product {} has no recipe, skipping stock check", product.getId());
+	     } else {
+	         for (Recipe recipe : recipes) {
+	             Inventory inventory = recipe.getInventory();
+	             double requiredQuantity = recipe.getQuantity() * request.getQuantity();
+	             
+	             // ✅ Check if enough stock available
+	             if (inventory.getQuantity() < requiredQuantity) {
+	                 throw new IllegalArgumentException(
+	                     "Insufficient stock for ingredient: " + inventory.getName() + 
+	                     ". Available: " + inventory.getQuantity() + 
+	                     ", Required: " + requiredQuantity +
+	                     " (Product: " + product.getName() + ")"
+	                 );
+	             }
+	         }
+	         log.info("✅ Stock check passed for product: {}", product.getName());
+	     }
+	
+	     // 6. Check if product already exists in order
+	     Optional<OrderItem> existingItemOpt = orderItemRepository.findByOrderIdAndProductId(orderId, request.getProductId());
+	
+	     OrderItem orderItem;
+	     
+	     if (existingItemOpt.isPresent()) {
+	         // ✅ Update existing item quantity
+	         orderItem = existingItemOpt.get();
+	         int oldQuantity = orderItem.getQuantity();
+	         int newQuantity = oldQuantity + request.getQuantity();
+	         
+	         log.info("📦 Product already in order. Old: {}, New: {}", oldQuantity, newQuantity);
+	         
+	         orderItem.setQuantity(newQuantity);
+	         // ✅ Price will be recalculated in @PreUpdate
+	         orderItem = orderItemRepository.save(orderItem);
+	         
+	         log.info("✅ Updated order item quantity: {}", orderItem.getId());
+	         
+	     } else {
+	         // ✅ Create new order item
+	         orderItem = new OrderItem();
+	         orderItem.setOrder(order);
+	         orderItem.setProduct(product);
+	         orderItem.setQuantity(request.getQuantity());
+	         orderItem.setPrice(product.getPrice());
+	         
+	         orderItem = orderItemRepository.save(orderItem);
+	         log.info("✅ Created new order item: {}", orderItem.getId());
+	     }
+	
+	     // 7. ✅ DEDUCT STOCK - Using the same logic as createOrder
+	     log.info("🔄 Deducting stock for product: {}", product.getName());
+	     
+	     if (recipes.isEmpty()) {
+	         log.warn("⚠️ Product {} has no recipe, skipping stock deduction", product.getId());
+	     } else {
+	         for (Recipe recipe : recipes) {
+	             Inventory inventory = recipe.getInventory();
+	             double requiredQuantity = recipe.getQuantity() * request.getQuantity();
+	             
+	             double oldQuantity = inventory.getQuantity();
+	             double newQuantity = oldQuantity - requiredQuantity;
+	             
+	             // ✅ Update inventory
+	             inventory.setQuantity(newQuantity);
+	             inventoryRepository.save(inventory);
+	             
+	             // ✅ Create inventory transaction (SAME as createOrder)
+	             createInventoryTransaction(
+	                 inventory,
+	                 "STOCK_OUT",                           // Transaction type
+	                 -requiredQuantity,                     // Negative quantity (deduct)
+	                 inventory.getCurrentPrice(),           // Unit price
+	                 oldQuantity,                           // Before quantity
+	                 newQuantity,                           // After quantity
+	                 order.getInvoiceNo(),                  // Reference number (invoice)
+	                 "Stock deduction for product: " + product.getName() + 
+	                 " (Added " + request.getQuantity() + " to order)", // Remark
+	                 "SYSTEM"                               // Created by
+	             );
+	             
+	             log.info("✅ Deducted {} of {} for product {}. Old: {}, New: {}", 
+	                 requiredQuantity, inventory.getName(), product.getName(), oldQuantity, newQuantity);
+	         }
+	     }
+	
+	     // 8. Update order total amount
+	     updateOrderTotal(orderId);
+	
+	     // 9. Update order status to PREPARING if it was PENDING
+	     if ("PENDING".equals(order.getStatus())) {
+	         order.setStatus("PREPARING");
+	         orderRepository.save(order);
+	         log.info("🔄 Order status updated to PREPARING");
+	     }
+	
+	     // 10. Return updated order with items
+	     Order updatedOrder = orderRepository.findById(orderId)
+	             .orElseThrow(() -> new IllegalArgumentException("Order not found after update"));
+	     
+	     log.info("✅ Order item added successfully. Order: {}, New Total: {}", 
+	         updatedOrder.getInvoiceNo(), updatedOrder.getTotalAmount());
+	     
+	     return updatedOrder;
+	 }
+	
+	 // ============================================
+	 // HELPER: Update order total amount
+	 // ============================================
+	 private void updateOrderTotal(Long orderId) {
+	     List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+	     
+	     Double total = items.stream()
+	             .mapToDouble(item -> {
+	                 Double price = item.getPrice();
+	                 Integer quantity = item.getQuantity();
+	                 return (price != null ? price : 0) * (quantity != null ? quantity : 0);
+	             })
+	             .sum();
+	     
+	     Order order = orderRepository.findById(orderId)
+	             .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+	     order.setTotalAmount(total);
+	     orderRepository.save(order);
+	     
+	     log.debug("📊 Updated order total: {} for order ID: {}", total, orderId);
+	 }
+    
 }

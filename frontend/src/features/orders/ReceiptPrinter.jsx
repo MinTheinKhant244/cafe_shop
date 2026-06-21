@@ -210,8 +210,8 @@ const ReceiptPrinter = ({ order, payment, onClose }) => {
                 <span>{formatCurrency(order.totalAmount)} Ks</span>
               </div>
               <div className={styles.totalRow}>
-                <span>Tax (5%):</span>
-                <span>{formatCurrency(order.totalAmount * 0.05)} Ks</span>
+                <span>Tax (0%):</span>
+                <span>{formatCurrency(order.totalAmount * 0)} Ks</span>
               </div>
               <div className={`${styles.totalRow} ${styles.grandTotal}`}>
                 <span>TOTAL:</span>
@@ -259,7 +259,6 @@ const ReceiptPrinter = ({ order, payment, onClose }) => {
             <div className={styles.footer}>
               <p>Thank you for dining with us!</p>
               <p>Please come again 😊</p>
-              <p className={styles.smallText}>** This is a computer-generated receipt **</p>
             </div>
           </div>
         </div>
